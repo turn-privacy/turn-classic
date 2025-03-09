@@ -1,6 +1,14 @@
 import { getAddressDetails, Kupmios, Lucid, SLOT_CONFIG_NETWORK, UTxO } from "npm:@lucid-evolution/lucid";
-import { OPERATOR_FEE, OPERATOR_MNEMONIC, UNIFORM_OUTPUT_VALUE } from "../config/constants.ts";
+import { OPERATOR_FEE, UNIFORM_OUTPUT_VALUE } from "../config/constants.ts";
 import { Assets } from "../types/index.ts";
+
+// Get operator mnemonic from environment
+const operatorMnemonic = Deno.env.get("OPERATOR_MNEMONIC");
+if (!operatorMnemonic) {
+  console.error("Error: OPERATOR_MNEMONIC environment variable is not set");
+  console.error("Please configure the OPERATOR_MNEMONIC in your .env file");
+  Deno.exit(1);
+}
 
 // Initialize Lucid
 const shelleyParams: any = await fetch("http://localhost:10000/local-cluster/api/admin/devnet/genesis/shelley").then((res) => res.json());
@@ -18,7 +26,7 @@ export const lucid = await Lucid(
   ),
   "Custom",
 );
-lucid.selectWallet.fromSeed(OPERATOR_MNEMONIC);
+lucid.selectWallet.fromSeed(operatorMnemonic);
 
 export const operator = {
   address: await lucid.wallet().address(),
