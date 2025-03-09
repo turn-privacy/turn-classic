@@ -191,6 +191,18 @@ $$
 - Pay fee to remove self from blacklist
 - pull parameters from an on-chain datum which can be updated by the TURN token holders
 
+## dotenv
+
+```ini
+OPERATOR_MNEMONIC=""
+NETWORK="" # options: LOCAL_TESTNET, PREVIEW_TESTNET, MAINNET
+BLOCKFROST_API_KEY="" # only used for PREVIEW_TESTNET and MAINNET, not used for LOCAL_TESTNET
+
+ADMIN_PORT="" # only used for LOCAL_TESTNET
+OGMIOS_PORT="" # only used for LOCAL_TESTNET
+KUPO_PORT="" # only used for LOCAL_TESTNET
+
+```
 
 ## Working With Yaci
 

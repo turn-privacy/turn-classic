@@ -2,16 +2,30 @@ import { getAddressDetails, Kupmios, Lucid, SLOT_CONFIG_NETWORK, UTxO } from "np
 import { OPERATOR_FEE, UNIFORM_OUTPUT_VALUE } from "../config/constants.ts";
 import { Assets } from "../types/index.ts";
 
-// Get operator mnemonic from environment
+// Get environment variables
 const operatorMnemonic = Deno.env.get("OPERATOR_MNEMONIC");
+const adminPort = Deno.env.get("ADMIN_PORT");
+const kupoPort = Deno.env.get("KUPO_PORT");
+const ogmiosPort = Deno.env.get("OGMIOS_PORT");
+
+// Check for required environment variables
 if (!operatorMnemonic) {
   console.error("Error: OPERATOR_MNEMONIC environment variable is not set");
   console.error("Please configure the OPERATOR_MNEMONIC in your .env file");
   Deno.exit(1);
 }
 
+if (!adminPort || !kupoPort || !ogmiosPort) {
+  console.error("Error: Required port environment variables are not set");
+  console.error("Please configure the following in your .env file:");
+  if (!adminPort) console.error("- ADMIN_PORT");
+  if (!kupoPort) console.error("- KUPO_PORT");
+  if (!ogmiosPort) console.error("- OGMIOS_PORT");
+  Deno.exit(1);
+}
+
 // Initialize Lucid
-const shelleyParams: any = await fetch("http://localhost:10000/local-cluster/api/admin/devnet/genesis/shelley").then((res) => res.json());
+const shelleyParams: any = await fetch(`http://localhost:${adminPort}/local-cluster/api/admin/devnet/genesis/shelley`).then((res) => res.json());
 
 const zeroTime = new Date(shelleyParams.systemStart).getTime();
 const slotLength = shelleyParams.slotLength * 1000; // in milliseconds
@@ -21,8 +35,8 @@ SLOT_CONFIG_NETWORK["Custom"] = { zeroTime, slotLength, zeroSlot: 0 };
 
 export const lucid = await Lucid(
   new Kupmios(
-    "http://localhost:1442",
-    "http://localhost:1337",
+    `http://localhost:${kupoPort}`,
+    `http://localhost:${ogmiosPort}`,
   ),
   "Custom",
 );
