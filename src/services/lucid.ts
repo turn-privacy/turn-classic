@@ -4,9 +4,50 @@ import { Assets } from "../types/index.ts";
 
 // Get environment variables
 const operatorMnemonic = Deno.env.get("OPERATOR_MNEMONIC");
-const adminPort = Deno.env.get("ADMIN_PORT");
-const kupoPort = Deno.env.get("KUPO_PORT");
-const ogmiosPort = Deno.env.get("OGMIOS_PORT");
+
+type NetworkConfig = {
+  network: "LOCAL_TESTNET" | "PREVIEW_TESTNET" | "MAINNET";
+  blockfrostApiKey?: string;
+  adminPort?: string;
+  kupoPort?: string;
+  ogmiosPort?: string;
+};
+
+const getNetworkConfig = () : NetworkConfig => {
+  const network = Deno.env.get("NETWORK");
+  if (!network) {
+    console.error("Error: NETWORK environment variable is not set");
+    Deno.exit(1);
+  }
+
+  if (network === "LOCAL_TESTNET") {
+    const config = {
+      network: network as "LOCAL_TESTNET",
+      adminPort: Deno.env.get("ADMIN_PORT"),
+      kupoPort: Deno.env.get("KUPO_PORT"),
+      ogmiosPort: Deno.env.get("OGMIOS_PORT"),
+    };
+
+    if (!config.adminPort || !config.kupoPort || !config.ogmiosPort) {
+      console.error("Error: Required port environment variables are not set");
+      Deno.exit(1);
+    }
+
+    return config
+  }
+
+  const config = {
+    network: network as "PREVIEW_TESTNET" | "MAINNET",
+    blockfrostApiKey: Deno.env.get("BLOCKFROST_API_KEY"),
+  }
+
+  if (!config.blockfrostApiKey) {
+    console.error("Error: BLOCKFROST_API_KEY environment variable is not set");
+    Deno.exit(1);
+  }
+
+  return config
+}
 
 // Check for required environment variables
 if (!operatorMnemonic) {
@@ -15,17 +56,10 @@ if (!operatorMnemonic) {
   Deno.exit(1);
 }
 
-if (!adminPort || !kupoPort || !ogmiosPort) {
-  console.error("Error: Required port environment variables are not set");
-  console.error("Please configure the following in your .env file:");
-  if (!adminPort) console.error("- ADMIN_PORT");
-  if (!kupoPort) console.error("- KUPO_PORT");
-  if (!ogmiosPort) console.error("- OGMIOS_PORT");
-  Deno.exit(1);
-}
+const networkConfig = getNetworkConfig();
 
 // Initialize Lucid
-const shelleyParams: any = await fetch(`http://localhost:${adminPort}/local-cluster/api/admin/devnet/genesis/shelley`).then((res) => res.json());
+const shelleyParams: any = await fetch(`http://localhost:${networkConfig.adminPort}/local-cluster/api/admin/devnet/genesis/shelley`).then((res) => res.json());
 
 const zeroTime = new Date(shelleyParams.systemStart).getTime();
 const slotLength = shelleyParams.slotLength * 1000; // in milliseconds
@@ -35,8 +69,8 @@ SLOT_CONFIG_NETWORK["Custom"] = { zeroTime, slotLength, zeroSlot: 0 };
 
 export const lucid = await Lucid(
   new Kupmios(
-    `http://localhost:${kupoPort}`,
-    `http://localhost:${ogmiosPort}`,
+    `http://localhost:${networkConfig.kupoPort}`,
+    `http://localhost:${networkConfig.ogmiosPort}`,
   ),
   "Custom",
 );
