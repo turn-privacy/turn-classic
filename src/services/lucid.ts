@@ -60,6 +60,7 @@ const networkConfig = getNetworkConfig();
 
 const getLucid = async () => {
   if (networkConfig.network === "LOCAL_TESTNET") {
+    console.log("Initializing Lucid for LOCAL_TESTNET");
     // Initialize Lucid
     const shelleyParams: any = await fetch(`http://localhost:${networkConfig.adminPort}/local-cluster/api/admin/devnet/genesis/shelley`).then((res) => res.json());
 
@@ -78,6 +79,7 @@ const getLucid = async () => {
     );
     return lucid;
   }
+  console.log("Initializing Lucid for PREVIEW_TESTNET or MAINNET");
 
   if (!networkConfig.blockfrostApiKey) {
     console.error("Error: BLOCKFROST_API_KEY environment variable is expected but is not set");
@@ -85,7 +87,8 @@ const getLucid = async () => {
   }
 
   const lucid = await Lucid(
-    new Blockfrost(networkConfig.blockfrostApiKey),
+    // new Blockfrost(networkConfig.blockfrostApiKey),
+    new Blockfrost("https://cardano-preview.blockfrost.io/api/v0", networkConfig.blockfrostApiKey ),
     networkConfig.network === "PREVIEW_TESTNET" ? "Preview" : "Mainnet",
   );
   return lucid;
