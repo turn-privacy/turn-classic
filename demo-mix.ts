@@ -1,7 +1,9 @@
-import { Assets, Blockfrost, Emulator, generateSeedPhrase, Lucid, TxBuilder, UTxO } from "npm:@lucid-evolution/lucid";
+import { Assets, Blockfrost, Emulator, generateSeedPhrase, Lucid, TxBuilder, TxSignBuilder, UTxO } from "npm:@lucid-evolution/lucid";
 
-const DEMO_ADDRESSES = 10;
+const DEMO_ADDRESSES = 3;
 const METADATA_LABEL = 674; // Standard metadata label
+const minute = 60 * 1000;
+const year = 31_556_952_000;
 
 const blockfrostApiKey = Deno.env.get("BLOCKFROST_API_KEY");
 if (!blockfrostApiKey) {
@@ -57,19 +59,28 @@ const operator: User = {
   recipientAddress: "",
   recipientSeed: "",
 };
-console.log("Operator address:", operator.address);
 const balanceOf = async (address: string) => await lucid.utxosAt(address).then((utxos) => utxos.reduce((acc, utxo) => acc + utxo.assets.lovelace, 0n));
+
+// {
+//   // send one ada from the operator to the operator address
+//   const tx : TxSignBuilder = await lucid.newTx()
+//     .pay.ToAddress(operator.address, { lovelace: 1_000_000n })
+//     .attachMetadata(METADATA_LABEL, { msg: "testing to see why .validTo doesn't work" })
+//     .addSigner(operator.address)
+//     .validTo(Date.now() + (15 * minute))
+//     .complete();
+//   const signedTx = await tx.sign.withWallet().complete();
+//   const submitted = await signedTx.submit();
+//   console.log(`Transaction ID: https://preview.cexplorer.io/tx/${submitted}`);
+//   Deno.exit(0);
+// }
+
+console.log("Operator address:", operator.address);
 console.log("Operator balance:", await balanceOf(operator.address));
-// const alice: User = await makeUser("alice");
-// const bob: User = await makeUser("bob");
-// const charlie: User = await makeUser("charlie");
-// const participants = [alice, bob, charlie];
 
 const participants = await Promise.all(Array.from({ length: DEMO_ADDRESSES }, async (_, i) => await makeUser(`user-${i}`)));
 const outputSize = 5_000_000n; // how much ada does each user mix
 const operatorFee = 1_000_000n;
-
-const minute = 60 * 1000;
 
 const selectUserUtxos = async (userAddress: string) => {
   const utxos = await lucid.utxosAt(userAddress);
@@ -120,21 +131,36 @@ const calculateUserChange = (utxos: UTxO[]): Assets => { // what needs to be ret
 
 { // send funds from operator to users from operator in a single tx
   const operatorUtxos = await lucid.utxosAt(operator.address);
-  const tx = await participants.reduce<Promise<TxBuilder>>(
-    async (accTx: Promise<TxBuilder>, user: User): Promise<TxBuilder> => {
-      return (await accTx)
+  // const tx = await participants.reduce<Promise<TxBuilder>>(
+  //   async (accTx: Promise<TxBuilder>, user: User): Promise<TxBuilder> => {
+  //     return (await accTx)
+  //       .pay.ToAddress(user.address, { lovelace: outputSize * 2n });
+  //   },
+  //   Promise.resolve(
+  //     lucid
+  //       .newTx()
+  //       .collectFrom(operatorUtxos)
+  //       .attachMetadata(METADATA_LABEL, { msg: "Fund accounts for demo" }),
+  //   ),
+  // );
+
+
+  const tx = participants.reduce<TxBuilder>(
+     (accTx: TxBuilder, user: User): TxBuilder => {
+      return (accTx)
         .pay.ToAddress(user.address, { lovelace: outputSize * 2n });
     },
-    Promise.resolve(
       lucid
         .newTx()
         .collectFrom(operatorUtxos)
-        .attachMetadata(METADATA_LABEL, { msg: "Fund accounts for demo" })
-    ),
+        .attachMetadata(METADATA_LABEL, { msg: "Fund accounts for demo" }),
   );
   console.log("Built tx to fund participants");
 
-  const completeTx = await tx.complete();
+  const completeTx = await tx
+    .validTo(Date.now() + (15 * minute))
+    // .validTo(Date.now() + (3 * year))
+    .complete();
   const signedTx = await completeTx.sign.withWallet().complete();
   const txHash = await signedTx.submit();
   console.log(`Transaction ID: https://preview.cexplorer.io/tx/${txHash}`);
@@ -166,10 +192,12 @@ let mixHash: string;
         .collectFrom(operatorUtxos)
         .pay.ToAddress(operator.address, { lovelace: operatorFee * BigInt(participants.length) }) // operator fee
         .attachMetadata(METADATA_LABEL, { msg: "Demo mix" })
-        .addSigner(operator.address)
+        .addSigner(operator.address),
     ),
   );
-  const completeTx = await tx.complete();
+  const completeTx = await tx
+    // .validTo(Date.now() + (15 * minute))
+    .complete();
 
   const rawUnsigned = completeTx.toCBOR();
   lucid.selectWallet.fromSeed(operator.seed);
@@ -182,9 +210,7 @@ let mixHash: string;
     witnesses.push(await lucid.fromTx(rawUnsigned).partialSign.withWallet());
   }
 
-
   lucid.selectWallet.fromSeed(operator.seed);
-  // console.log(`Witnesses: ${witnesses.length}`, witnesses);
   const assembled = completeTx.assemble(witnesses);
   const ready = await assembled.complete();
 
@@ -192,9 +218,8 @@ let mixHash: string;
   mixHash = submitted;
 
   // show tx hash
-  // console.log("Transaction ID:", submitted);
   console.log(`Transaction ID: https://preview.cexplorer.io/tx/${submitted}`);
-  // wait for user to press enter to continue
+
   prompt("Press enter to continue");
   console.log("Moving on...");
 }
@@ -215,7 +240,7 @@ participants.forEach(async (user) => console.log(`${user.name} recipient balance
 
       return (await accTx)
         .collectFrom(utxos)
-        .pay.ToAddress(operator.address, { lovelace: balance})
+        .pay.ToAddress(operator.address, { lovelace: balance })
         .addSigner(user.address);
     },
     Promise.resolve(
@@ -223,7 +248,7 @@ participants.forEach(async (user) => console.log(`${user.name} recipient balance
         .newTx()
         .collectFrom(operatorUtxos)
         .addSigner(operator.address)
-        .attachMetadata(METADATA_LABEL, { msg: "send everything back to the operator to save tADA" })
+        .attachMetadata(METADATA_LABEL, { msg: "send everything back to the operator to save tADA" }),
     ),
   );
   const completeTx = await tx.complete();
@@ -246,4 +271,4 @@ participants.forEach(async (user) => console.log(`${user.name} recipient balance
   console.log(`Transaction ID: https://preview.cexplorer.io/tx/${submitted}`);
 }
 
-console.log(`The link you want to share is https://preview.cardanoscan.io/transaction/${mixHash}`)
+console.log(`The link you want to share is https://preview.cardanoscan.io/transaction/${mixHash}`);
