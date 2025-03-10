@@ -224,6 +224,24 @@ Fund Address #0
 
     topup addr_test1qryvgass5dsrf2kxl3vgfz76uhp83kv5lagzcp29tcana68ca5aqa6swlq6llfamln09tal7n5kvt4275ckwedpt4v7q48uhex 500000000
 
+## Example Transactions
+
+### 10 users
+
+https://preview.cardanoscan.io/transaction/42bf1593b115d934ce88db69f4bc59b0b604fe4103881abb7b5d989b35910c02
+
+### 20 users
+
+https://preview.cardanoscan.io/transaction/7fe8f611b28c923dd17b7671e4c1705eef58b6001386f18e2687d788897ad745?tab=summary
+
+### 30 users
+
+https://preview.cardanoscan.io/transaction/963b06e44c018b7c4dd7d1496b52bbeec8930f65e507898476961bcc15fdc0e6
+
+### 40 users
+
+https://preview.cardanoscan.io/transaction/878d8f20a0f940617d94efa99709d2267596c139eedd36402246a7e264531386
+
 ## Resources
 
 ### CoinJoin initial post

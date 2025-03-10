@@ -2,7 +2,6 @@ import { Assets, Blockfrost, Emulator, generateSeedPhrase, Lucid, TxBuilder, UTx
 
 const DEMO_ADDRESSES = 10;
 const METADATA_LABEL = 674; // Standard metadata label
-const WAIT_CONFIRMATIONS = 3;
 
 const blockfrostApiKey = Deno.env.get("BLOCKFROST_API_KEY");
 if (!blockfrostApiKey) {
@@ -61,11 +60,12 @@ const operator: User = {
 console.log("Operator address:", operator.address);
 const balanceOf = async (address: string) => await lucid.utxosAt(address).then((utxos) => utxos.reduce((acc, utxo) => acc + utxo.assets.lovelace, 0n));
 console.log("Operator balance:", await balanceOf(operator.address));
-const alice: User = await makeUser("alice");
-const bob: User = await makeUser("bob");
-const charlie: User = await makeUser("charlie");
-const participants = [alice, bob, charlie];
+// const alice: User = await makeUser("alice");
+// const bob: User = await makeUser("bob");
+// const charlie: User = await makeUser("charlie");
+// const participants = [alice, bob, charlie];
 
+const participants = await Promise.all(Array.from({ length: DEMO_ADDRESSES }, async (_, i) => await makeUser(`user-${i}`)));
 const outputSize = 5_000_000n; // how much ada does each user mix
 const operatorFee = 1_000_000n;
 
@@ -129,7 +129,7 @@ const calculateUserChange = (utxos: UTxO[]): Assets => { // what needs to be ret
       lucid
         .newTx()
         .collectFrom(operatorUtxos)
-        .attachMetadata(METADATA_LABEL, { msg: "Fund accounts for demo" }),
+        .attachMetadata(METADATA_LABEL, { msg: "Fund accounts for demo" })
     ),
   );
   console.log("Built tx to fund participants");
@@ -138,15 +138,15 @@ const calculateUserChange = (utxos: UTxO[]): Assets => { // what needs to be ret
   const signedTx = await completeTx.sign.withWallet().complete();
   const txHash = await signedTx.submit();
   console.log(`Transaction ID: https://preview.cexplorer.io/tx/${txHash}`);
-
   // wait for user to press enter to continue
-  const ready = prompt("Press enter to continue");
+  prompt("Press enter to continue");
   console.log("Moving on..."); // only needs to be signed by operator
 }
 
 // show balances
 participants.forEach(async (user) => console.log(`${user.name} balance:`, await balanceOf(user.address)));
 
+let mixHash: string;
 {
   const operatorUtxos = await lucid.utxosAt(operator.address);
   // mix funds
@@ -166,7 +166,7 @@ participants.forEach(async (user) => console.log(`${user.name} balance:`, await 
         .collectFrom(operatorUtxos)
         .pay.ToAddress(operator.address, { lovelace: operatorFee * BigInt(participants.length) }) // operator fee
         .attachMetadata(METADATA_LABEL, { msg: "Demo mix" })
-        .addSigner(operator.address),
+        .addSigner(operator.address)
     ),
   );
   const completeTx = await tx.complete();
@@ -175,33 +175,21 @@ participants.forEach(async (user) => console.log(`${user.name} balance:`, await 
   lucid.selectWallet.fromSeed(operator.seed);
   const operatorWitness = await lucid.fromTx(rawUnsigned).partialSign.withWallet();
 
-  lucid.selectWallet.fromSeed(alice.seed);
-  const aliceWitness = await lucid.fromTx(rawUnsigned).partialSign.withWallet();
+  const witnesses = [operatorWitness];
 
-  lucid.selectWallet.fromSeed(bob.seed);
-  const bobWitness = await lucid.fromTx(rawUnsigned).partialSign.withWallet();
+  for (const participant of participants) {
+    lucid.selectWallet.fromSeed(participant.seed);
+    witnesses.push(await lucid.fromTx(rawUnsigned).partialSign.withWallet());
+  }
 
-  lucid.selectWallet.fromSeed(charlie.seed);
-  const charlieWitness = await lucid.fromTx(rawUnsigned).partialSign.withWallet();
-
-  const witnesses = [operatorWitness, aliceWitness, bobWitness, charlieWitness];
-
-  // const witnesses = await participants.reduce<Promise<string[]>>(
-  //   async (accWitnesses: Promise<string[]>, participant: User): Promise<string[]> => {
-  //     lucid.selectWallet.fromSeed(participant.seed);
-  //     return (await accWitnesses).concat(await lucid.fromTx(rawUnsigned).partialSign.withWallet());
-  //   },
-  //   Promise.resolve([
-  //     await lucid.fromTx(rawUnsigned).partialSign.withWallet(),
-  //   ]),
-  // );
 
   lucid.selectWallet.fromSeed(operator.seed);
-  console.log(`Witnesses: ${witnesses.length}`, witnesses);
+  // console.log(`Witnesses: ${witnesses.length}`, witnesses);
   const assembled = completeTx.assemble(witnesses);
   const ready = await assembled.complete();
 
   const submitted = await ready.submit();
+  mixHash = submitted;
 
   // show tx hash
   // console.log("Transaction ID:", submitted);
@@ -235,7 +223,7 @@ participants.forEach(async (user) => console.log(`${user.name} recipient balance
         .newTx()
         .collectFrom(operatorUtxos)
         .addSigner(operator.address)
-        .attachMetadata(METADATA_LABEL, { msg: "send everything back to the operator to save tADA" }),
+        .attachMetadata(METADATA_LABEL, { msg: "send everything back to the operator to save tADA" })
     ),
   );
   const completeTx = await tx.complete();
@@ -257,3 +245,5 @@ participants.forEach(async (user) => console.log(`${user.name} recipient balance
   const submitted = await ready.submit();
   console.log(`Transaction ID: https://preview.cexplorer.io/tx/${submitted}`);
 }
+
+console.log(`The link you want to share is https://preview.cardanoscan.io/transaction/${mixHash}`)
