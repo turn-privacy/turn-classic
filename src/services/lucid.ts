@@ -107,7 +107,8 @@ export const selectUserUtxos = async (userAddress: string) => {
   try {
     // Ensure we're using the full address for Kupo
     const addressDetails = getAddressDetails(userAddress);
-    const utxos = await lucid.utxosAt(addressDetails.address.hex);
+    // const utxos = await lucid.utxosAt(addressDetails.address.hex);
+    const utxos = await lucid.utxosAt(userAddress);
     const aproxMinOutput = 1_000_000n; // don't want to run into issues with minUTXO
     const minimumInputValue = UNIFORM_OUTPUT_VALUE + aproxMinOutput + OPERATOR_FEE;
 
