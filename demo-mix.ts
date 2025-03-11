@@ -1,4 +1,4 @@
-import { Assets, Blockfrost, Emulator, generateSeedPhrase, Lucid, TxBuilder, TxSignBuilder, UTxO } from "npm:@lucid-evolution/lucid";
+import { Assets, Blockfrost, Emulator, generateSeedPhrase, Lucid, TxBuilder, TxSignBuilder, unixTimeToSlot, UTxO } from "npm:@lucid-evolution/lucid";
 
 const DEMO_ADDRESSES = 3;
 const METADATA_LABEL = 674; // Standard metadata label
@@ -60,25 +60,30 @@ const operator: User = {
   recipientSeed: "",
 };
 const balanceOf = async (address: string) => await lucid.utxosAt(address).then((utxos) => utxos.reduce((acc, utxo) => acc + utxo.assets.lovelace, 0n));
+const participants = await Promise.all(Array.from({ length: DEMO_ADDRESSES }, async (_, i) => await makeUser(`user-${i}`)));
 
-// {
-//   // send one ada from the operator to the operator address
-//   const tx : TxSignBuilder = await lucid.newTx()
-//     .pay.ToAddress(operator.address, { lovelace: 1_000_000n })
-//     .attachMetadata(METADATA_LABEL, { msg: "testing to see why .validTo doesn't work" })
-//     .addSigner(operator.address)
-//     .validTo(Date.now() + (15 * minute))
-//     .complete();
-//   const signedTx = await tx.sign.withWallet().complete();
-//   const submitted = await signedTx.submit();
-//   console.log(`Transaction ID: https://preview.cexplorer.io/tx/${submitted}`);
-//   Deno.exit(0);
-// }
+{
+  // // const valid_to = Date.now() + (15 * minute);
+  // const valid_to = Date.now();
+  // const valid_to_slot = unixTimeToSlot("Preprod", valid_to);
+  // console.log("valid_to:", valid_to);
+  // console.log("valid_to_slot:", valid_to_slot);
+  // // send one ada from the operator to the operator address
+  // const tx : TxSignBuilder = await lucid.newTx()
+  //   .pay.ToAddress(operator.address, { lovelace: 1_000_000n })
+  //   // .attachMetadata(METADATA_LABEL, { msg: "testing to see why .validTo doesn't work" })
+  //   // .addSigner(operator.address)
+  //   .validTo(valid_to)
+  //   .complete();
+  // const signedTx = await tx.sign.withWallet().complete();
+  // const submitted = await signedTx.submit();
+  // console.log(`Transaction ID: https://preview.cexplorer.io/tx/${submitted}`);
+  // Deno.exit(0);
+}
 
 console.log("Operator address:", operator.address);
 console.log("Operator balance:", await balanceOf(operator.address));
 
-const participants = await Promise.all(Array.from({ length: DEMO_ADDRESSES }, async (_, i) => await makeUser(`user-${i}`)));
 const outputSize = 5_000_000n; // how much ada does each user mix
 const operatorFee = 1_000_000n;
 
@@ -131,34 +136,18 @@ const calculateUserChange = (utxos: UTxO[]): Assets => { // what needs to be ret
 
 { // send funds from operator to users from operator in a single tx
   const operatorUtxos = await lucid.utxosAt(operator.address);
-  // const tx = await participants.reduce<Promise<TxBuilder>>(
-  //   async (accTx: Promise<TxBuilder>, user: User): Promise<TxBuilder> => {
-  //     return (await accTx)
-  //       .pay.ToAddress(user.address, { lovelace: outputSize * 2n });
-  //   },
-  //   Promise.resolve(
-  //     lucid
-  //       .newTx()
-  //       .collectFrom(operatorUtxos)
-  //       .attachMetadata(METADATA_LABEL, { msg: "Fund accounts for demo" }),
-  //   ),
-  // );
-
 
   const tx = participants.reduce<TxBuilder>(
-     (accTx: TxBuilder, user: User): TxBuilder => {
-      return (accTx)
-        .pay.ToAddress(user.address, { lovelace: outputSize * 2n });
-    },
-      lucid
-        .newTx()
-        .collectFrom(operatorUtxos)
-        .attachMetadata(METADATA_LABEL, { msg: "Fund accounts for demo" }),
+    (accTx: TxBuilder, user: User): TxBuilder => accTx.pay.ToAddress(user.address, { lovelace: outputSize * 2n }),
+    lucid
+      .newTx()
+      .collectFrom(operatorUtxos)
+      .attachMetadata(METADATA_LABEL, { msg: "Fund accounts for demo" }),
   );
   console.log("Built tx to fund participants");
 
   const completeTx = await tx
-    .validTo(Date.now() + (15 * minute))
+    // .validTo(Date.now() + (15 * minute))
     // .validTo(Date.now() + (3 * year))
     .complete();
   const signedTx = await completeTx.sign.withWallet().complete();

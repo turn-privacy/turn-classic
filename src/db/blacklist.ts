@@ -11,6 +11,9 @@ export type BlacklistEntry = {
 };
 
 export async function addToBlacklist(participant: Participant, reason: BlacklistReason): Promise<void> {
+  if (!participant?.address) {
+    throw new Error("Invalid participant address");
+  }
   const entry: BlacklistEntry = {
     participant,
     reason,
@@ -20,15 +23,24 @@ export async function addToBlacklist(participant: Participant, reason: Blacklist
 }
 
 export async function removeFromBlacklist(address: string): Promise<void> {
+  if (!address) {
+    throw new Error("Invalid address");
+  }
   await kv.delete(["blacklist", address]);
 }
 
 export async function isBlacklisted(address: string): Promise<boolean> {
-  const entry = await kv.get<BlacklistEntry>(["blacklist", address]);
+  if (!address) {
+    return false;
+  }
+  const entry = await kv.get(["blacklist", address]);
   return entry.value !== null;
 }
 
 export async function getBlacklistEntry(address: string): Promise<BlacklistEntry | null> {
+  if (!address) {
+    return null;
+  }
   const entry = await kv.get<BlacklistEntry>(["blacklist", address]);
   return entry.value;
 }

@@ -87,6 +87,7 @@ wss.on("connection", (ws: WebSocketClient) => {
         await handleFaucet(ws, rest);
         break;
       case "signup":
+        console.log("Received signup request with data:", rest);
         await handleSignup(ws, rest);
         await checkQueue();
         break;

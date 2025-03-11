@@ -7,7 +7,18 @@ import { broadcast, clientToAddress } from "../services/websocket.ts";
 import { isBlacklisted, getBlacklistEntry } from "../db/blacklist.ts";
 
 export const handleSignup = async (ws: WebSocketClient, rest: any) => {
+  console.log("Received signup request with data:", rest);
   const { address, signedMessage, payload } = rest;
+
+  // Validate required fields
+  if (!address || !signedMessage || !payload) {
+    console.log("Missing required fields:", { address, signedMessage, payload });
+    ws.send(JSON.stringify({
+      type: "failed_signup",
+      data: "Missing required fields: address, signedMessage, and payload are required",
+    }));
+    return;
+  }
 
   // Check if address is blacklisted
   if (await isBlacklisted(address)) {
