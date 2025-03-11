@@ -180,10 +180,13 @@ $$
 ### Server implementation
 
 - [X] remove clients from queue if they disconnect
-- [ ] remove users who don't sign after some amount of time
 - [X] add database so mixer can recover if server restarts
 - [X] heartbeat
 - [ ] fix WebSocket client management (currently seeing ghost "Client disconnected" messages due to stale WebSocket connections not being properly cleaned up)
+- [ ] blacklist users who break the web connection while in an active ceremony
+- [ ] remove and blacklist users who don't sign after some amount of time
+- [ ] dotenv toggle to control whether or not the blacklist is checked
+
 
 
 ## Possible features

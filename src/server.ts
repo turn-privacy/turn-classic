@@ -5,6 +5,7 @@ import { getTxDetails, setTxDetails } from "./db/transactions.ts";
 import { handleFaucet } from "./handlers/faucet.ts";
 import { handleSignature, checkWitnesses } from "./handlers/signature.ts";
 import { handleSignup } from "./handlers/signup.ts";
+import { showBlacklist } from "./handlers/blacklist.ts";
 import { lucid, operator, selectUserUtxos, calculateUserChange } from "./services/lucid.ts";
 import { broadcast, setupHeartbeat, wss } from "./services/websocket.ts";
 import { moveParticipantsToActiveCeremony, moveParticipantsBackToQueue } from "./db/ceremony.ts";
@@ -94,6 +95,9 @@ wss.on("connection", (ws: WebSocketClient) => {
       case "submit_signature":
         await handleSignature(ws, rest);
         await checkWitnesses();
+        break;
+      case "show_blacklist":
+        await showBlacklist(ws, rest);
         break;
       default:
         console.log("No handler for message type:", type);
