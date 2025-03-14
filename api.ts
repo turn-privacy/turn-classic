@@ -13,6 +13,7 @@ type Ceremony = {
   participants: Participant[];
   transaction: string;
   witnesses: string[];
+  transactionHash: string;
 };
 
 const createTransaction = async (participants: Participant[]) => {
@@ -63,9 +64,11 @@ class TurnController {
       participants: [...this.queue],
       transaction: "",
       witnesses: [],
+      transactionHash: "",
     };
 
     ceremony.transaction = await createTransaction(ceremony.participants);
+    ceremony.transactionHash = lucid.fromTx(ceremony.transaction).toHash();
 
     const operatorWitness = await lucid.fromTx(ceremony.transaction).partialSign.withWallet();
     ceremony.witnesses.push(operatorWitness);
@@ -166,11 +169,15 @@ async function handleSignup(req: Request): Promise<Response> {
 }
 
 function handleListActiveCeremonies(): Response {
-  return new Response(JSON.stringify(turnController.getCeremonies()), { status: 200 });
+  const ceremonies = turnController.getCeremonies();
+  const ceremoniesWithoutRecipients = ceremonies.map((ceremony: Ceremony) => ({...ceremony, participants: ceremony.participants.map((participant: Participant) => ({...participant, recipient: ""}))}));
+  return new Response(JSON.stringify(ceremoniesWithoutRecipients), { status: 200 });
 }
 
 function handleQueue(): Response {
-  return new Response(JSON.stringify(turnController.getQueue()), { status: 200 });
+  const queue = turnController.getQueue();
+  const queueWithoutRecipients = queue.map((participant: Participant) => ({...participant, recipient: ""}));
+  return new Response(JSON.stringify(queueWithoutRecipients), { status: 200 });
 }
 
 async function handleSubmitSignature(req: Request): Promise<Response> {
@@ -183,7 +190,6 @@ async function handleSubmitSignature(req: Request): Promise<Response> {
 }
 
 async function handleGet(req: Request): Promise<Response> {
-  console.log("STUB: inside handleGet");
   const { pathname } = new URL(req.url);
   switch (pathname) {
     case "/list_active_ceremonies":
@@ -196,7 +202,6 @@ async function handleGet(req: Request): Promise<Response> {
 }
 
 async function handlePost(req: Request): Promise<Response> {
-  console.log("STUB: inside handlePost");
   const { pathname } = new URL(req.url);
   switch (pathname) {
     case "/signup":
