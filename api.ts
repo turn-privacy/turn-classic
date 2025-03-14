@@ -1,18 +1,22 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
 import { Participant } from "./src/types/index.ts";
 import { MIN_PARTICIPANTS, OPERATOR_FEE, UNIFORM_OUTPUT_VALUE } from "./src/config/constants.ts";
-import { calculateUserChange, selectUserUtxos, lucid, operator } from "./src/services/lucid.ts";
+import { calculateUserChange, lucid, operator, selectUserUtxos } from "./src/services/lucid.ts";
 import { getAddressDetails, verifyData } from "npm:@lucid-evolution/lucid";
 import { Buffer } from "npm:buffer";
 
-const fromHexToText = (hex: string) =>  Buffer.from(hex, 'hex').toString('utf-8');
-
+const fromHexToText = (hex: string) => Buffer.from(hex, "hex").toString("utf-8");
 
 type Ceremony = {
   id: string;
   participants: Participant[];
   transaction: string;
   witnesses: string[];
+  transactionHash: string;
+};
+
+type CeremonyRecord = {
+  id: string;
   transactionHash: string;
 };
 
@@ -34,7 +38,7 @@ const createTransaction = async (participants: Participant[]) => {
         .collectFrom(operatorUtxos)
         .pay.ToAddress(operator.address, {
           lovelace: OPERATOR_FEE * BigInt(participants.length),
-        }) // operator fee
+        }), // operator fee
     ),
   );
   const completeTx = await tx.complete();
@@ -46,6 +50,7 @@ class TurnController {
   private queue: Participant[] = [];
   // list of ceremonies
   private ceremonies: Ceremony[] = [];
+  private ceremonyHistory: CeremonyRecord[] = [];
 
   // add a participant to the queue
   addParticipant(participant: Participant) {
@@ -55,11 +60,12 @@ class TurnController {
   // try to create a ceremony
   async tryCreateCeremony() {
     // if there are enough participants in the queue, create a ceremony
-    if (this.queue.length < MIN_PARTICIPANTS) 
+    if (this.queue.length < MIN_PARTICIPANTS) {
       return 0;
+    }
 
     // and remove the participants from the queue
-    const ceremony : Ceremony = {
+    const ceremony: Ceremony = {
       id: crypto.randomUUID(),
       participants: [...this.queue],
       transaction: "",
@@ -94,13 +100,19 @@ class TurnController {
     const ceremony = this.ceremonies.find((c) => c.id === id);
     if (!ceremony) return;
 
-    if (ceremony.participants.length +1 !== ceremony.witnesses.length) 
+    if (ceremony.participants.length + 1 !== ceremony.witnesses.length) {
       return 0;
-   
+    }
+
     const assembled = lucid.fromTx(ceremony.transaction).assemble(ceremony.witnesses);
     const ready = await assembled.complete();
     const submitted = await ready.submit();
     console.log("Transaction submitted:", submitted);
+
+    this.ceremonyHistory.push({
+      id,
+      transactionHash: ceremony.transactionHash,
+    });
 
     // if num participants = num witnesses --> continue
     // submit the transaction
@@ -127,9 +139,34 @@ class TurnController {
   getQueue() {
     return this.queue;
   }
-};
+
+  getCeremonyHistory() {
+    return this.ceremonyHistory;
+  }
+}
 
 const turnController = new TurnController();
+
+function handleCeremonyStatus(searchParams: URLSearchParams): Response {
+  const ceremonyId = searchParams.get("id");
+  if (!ceremonyId) {
+    return new Response("Missing ceremony id", { status: 400 });
+  }
+  // Check if ceremony is in active ceremonies
+  const activeCeremony = turnController.getCeremonies().find((c) => c.id === ceremonyId);
+  if (activeCeremony) {
+    return new Response("pending", { status: 200 });
+  }
+
+  // Check if ceremony is in history
+  const historyCeremony = turnController.getCeremonyHistory().find((c) => c.id === ceremonyId);
+  if (historyCeremony) {
+    return new Response("on-chain", { status: 200 });
+  }
+
+  // Ceremony not found in either place
+  return new Response("could not find", { status: 404 });
+}
 
 async function handleSignup(req: Request): Promise<Response> {
   console.log("handleSignup");
@@ -140,7 +177,7 @@ async function handleSignup(req: Request): Promise<Response> {
 
   const addressDetails = getAddressDetails(address);
 
-  // check the signature is valid 
+  // check the signature is valid
   const isValidSignature = verifyData(
     addressDetails.address.hex,
     addressDetails.paymentCredential!.hash,
@@ -153,14 +190,13 @@ async function handleSignup(req: Request): Promise<Response> {
   }
 
   { // check a whole bunch of things
-
   }
 
-  const participant : Participant = {
+  const participant: Participant = {
     address,
     recipient,
     signedMessage,
-  }
+  };
   // if all checks pass, add the participant to the queue
   turnController.addParticipant(participant);
   const ceremonyId = await turnController.tryCreateCeremony();
@@ -170,13 +206,13 @@ async function handleSignup(req: Request): Promise<Response> {
 
 function handleListActiveCeremonies(): Response {
   const ceremonies = turnController.getCeremonies();
-  const ceremoniesWithoutRecipients = ceremonies.map((ceremony: Ceremony) => ({...ceremony, participants: ceremony.participants.map((participant: Participant) => ({...participant, recipient: ""}))}));
+  const ceremoniesWithoutRecipients = ceremonies.map((ceremony: Ceremony) => ({ ...ceremony, participants: ceremony.participants.map((participant: Participant) => ({ ...participant, recipient: "" })) }));
   return new Response(JSON.stringify(ceremoniesWithoutRecipients), { status: 200 });
 }
 
 function handleQueue(): Response {
   const queue = turnController.getQueue();
-  const queueWithoutRecipients = queue.map((participant: Participant) => ({...participant, recipient: ""}));
+  const queueWithoutRecipients = queue.map((participant: Participant) => ({ ...participant, recipient: "" }));
   return new Response(JSON.stringify(queueWithoutRecipients), { status: 200 });
 }
 
@@ -190,12 +226,14 @@ async function handleSubmitSignature(req: Request): Promise<Response> {
 }
 
 async function handleGet(req: Request): Promise<Response> {
-  const { pathname } = new URL(req.url);
+  const { pathname, searchParams } = new URL(req.url);
   switch (pathname) {
     case "/list_active_ceremonies":
       return handleListActiveCeremonies();
     case "/queue":
       return handleQueue();
+    case "/ceremony_status":
+      return handleCeremonyStatus(searchParams);
     default:
       return new Response("Not Found", { status: 404 });
   }
@@ -243,9 +281,9 @@ const handler = async (req: Request): Promise<Response> => {
         response = await handlePost(req);
         break;
       default:
-        return new Response("Method Not Allowed", { 
+        return new Response("Method Not Allowed", {
           status: 405,
-          headers: corsHeaders
+          headers: corsHeaders,
         });
     }
 
@@ -262,9 +300,9 @@ const handler = async (req: Request): Promise<Response> => {
     });
   } catch (error) {
     console.error("Error handling request:", error);
-    return new Response("Internal Server Error", { 
+    return new Response("Internal Server Error", {
       status: 500,
-      headers: corsHeaders
+      headers: corsHeaders,
     });
   }
 };
