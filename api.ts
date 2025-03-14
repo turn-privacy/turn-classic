@@ -3,6 +3,10 @@ import { Participant } from "./src/types/index.ts";
 import { MIN_PARTICIPANTS, OPERATOR_FEE, UNIFORM_OUTPUT_VALUE } from "./src/config/constants.ts";
 import { calculateUserChange, selectUserUtxos, lucid, operator } from "./src/services/lucid.ts";
 import { getAddressDetails, verifyData } from "npm:@lucid-evolution/lucid";
+import { Buffer } from "npm:buffer";
+
+const fromHexToText = (hex: string) =>  Buffer.from(hex, 'hex').toString('utf-8');
+
 
 type Ceremony = {
   id: string;
@@ -123,10 +127,11 @@ class TurnController {
 const turnController = new TurnController();
 
 async function handleSignup(req: Request): Promise<Response> {
+  console.log("handleSignup");
   const { signedMessage, payload } = await req.json();
 
   // get address and recipient from payload
-  const { address, recipient } = JSON.parse(payload);
+  const { address, recipient } = JSON.parse(fromHexToText(payload));
 
   const addressDetails = getAddressDetails(address);
 
@@ -171,6 +176,7 @@ async function handleSubmitSignature(req: Request): Promise<Response> {
 }
 
 async function handleGet(req: Request): Promise<Response> {
+  console.log("STUB: inside handleGet");
   const { pathname } = new URL(req.url);
   switch (pathname) {
     case "/list_active_ceremonies":
@@ -183,6 +189,7 @@ async function handleGet(req: Request): Promise<Response> {
 }
 
 async function handlePost(req: Request): Promise<Response> {
+  console.log("STUB: inside handlePost");
   const { pathname } = new URL(req.url);
   switch (pathname) {
     case "/signup":
@@ -195,13 +202,58 @@ async function handlePost(req: Request): Promise<Response> {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  switch (req.method) {
-    case "GET":
-      return await handleGet(req);
-    case "POST":
-      return await handlePost(req);
-    default:
-      return new Response("Method Not Allowed", { status: 405 });
+  // Handle CORS preflight requests
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "http://localhost:3000",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
+    });
+  }
+
+  // Add CORS headers to all responses
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": "http://localhost:3000",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+  };
+
+  try {
+    let response: Response;
+    switch (req.method) {
+      case "GET":
+        response = await handleGet(req);
+        break;
+      case "POST":
+        response = await handlePost(req);
+        break;
+      default:
+        return new Response("Method Not Allowed", { 
+          status: 405,
+          headers: corsHeaders
+        });
+    }
+
+    // Add CORS headers to the response
+    const newHeaders = new Headers(response.headers);
+    Object.entries(corsHeaders).forEach(([key, value]) => {
+      newHeaders.set(key, value);
+    });
+
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: newHeaders,
+    });
+  } catch (error) {
+    console.error("Error handling request:", error);
+    return new Response("Internal Server Error", { 
+      status: 500,
+      headers: corsHeaders
+    });
   }
 };
 
