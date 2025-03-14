@@ -55,7 +55,7 @@ class TurnController {
   async tryCreateCeremony() {
     // if there are enough participants in the queue, create a ceremony
     if (this.queue.length < MIN_PARTICIPANTS) 
-      return;
+      return 0;
 
     // and remove the participants from the queue
     const ceremony : Ceremony = {
@@ -92,7 +92,7 @@ class TurnController {
     if (!ceremony) return;
 
     if (ceremony.participants.length +1 !== ceremony.witnesses.length) 
-      return;
+      return 0;
    
     const assembled = lucid.fromTx(ceremony.transaction).assemble(ceremony.witnesses);
     const ready = await assembled.complete();
@@ -103,6 +103,8 @@ class TurnController {
     // submit the transaction
     // remove the ceremony from the list
     this.ceremonies = this.ceremonies.filter((c) => c.id !== id);
+
+    return 1;
   }
 
   addWitness(id: string, witness: string) {
@@ -158,7 +160,9 @@ async function handleSignup(req: Request): Promise<Response> {
   }
   // if all checks pass, add the participant to the queue
   turnController.addParticipant(participant);
-  return new Response("Participant added to queue", { status: 200 });
+  const ceremonyId = await turnController.tryCreateCeremony();
+
+  return new Response(`Participant added to queue ${ceremonyId !== 0 ? `and created ceremony ${ceremonyId}` : ""}`, { status: 200 });
 }
 
 function handleListActiveCeremonies(): Response {
@@ -172,7 +176,10 @@ function handleQueue(): Response {
 async function handleSubmitSignature(req: Request): Promise<Response> {
   const { id, witness } = await req.json();
   turnController.addWitness(id, witness);
-  return new Response("Witness added to ceremony", { status: 200 });
+
+  const processed = await turnController.processCeremony(id);
+
+  return new Response(`Witness added to ceremony ${processed !== 0 ? `and processed transaction submitted` : ""}`, { status: 200 });
 }
 
 async function handleGet(req: Request): Promise<Response> {
