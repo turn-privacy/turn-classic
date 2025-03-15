@@ -14,6 +14,10 @@ export class InMemoryTurnController implements ITurnController {
 
   // add a participant to the queue
   addParticipant(participant: Participant) : Promise<void> {
+    // todo: ensure the participant is not already in the queue or an active ceremony
+    // todo: ensure the recipient is not already in the queue or an active ceremony
+    // todo: ensure the recipient has no transaction history 
+
     this.queue.push(participant);
     return Promise.resolve();
   }
@@ -83,9 +87,10 @@ export class InMemoryTurnController implements ITurnController {
     // add a witness to the ceremony
     const ceremony = this.ceremonies.find((c) => c.id === id);
     if (!ceremony) return Promise.resolve();
-    // check if the witness is valid
-    // check that we don't already have a witness from this signer
-    // check that the signer is actually a participant in this ceremony
+    
+    // todo: ensure witness belongs to a participant in the ceremony who has not already provided a witness
+    // todo: ensure the witness is a valid signature on the transaction
+    
     ceremony.witnesses.push(witness);
     return Promise.resolve();
   }

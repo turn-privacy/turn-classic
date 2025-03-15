@@ -12,7 +12,9 @@ export class DenoKVTurnController implements ITurnController {
   }
 
   async addParticipant(participant: Participant): Promise<void> {
-    // Add to queue with timestamp for ordering
+    // todo: ensure the participant is not already in the queue or an active ceremony
+    // todo: ensure the recipient is not already in the queue or an active ceremony
+    // todo: ensure the recipient has no transaction history 
     await this.kv.atomic()
       .set(["queue", Date.now(), participant.address], participant)
       .commit();
@@ -112,6 +114,9 @@ export class DenoKVTurnController implements ITurnController {
   async addWitness(id: string, witness: string): Promise<void> {
     const ceremonyEntry = await this.kv.get<Ceremony>(["ceremonies", id]);
     if (!ceremonyEntry.value) return;
+
+    // todo: ensure witness belongs to a participant in the ceremony who has not already provided a witness
+    // todo: ensure the witness is a valid signature on the transaction
 
     const ceremony = ceremonyEntry.value;
     ceremony.witnesses.push(witness);
