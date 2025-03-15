@@ -4,8 +4,7 @@
     "test": "deno test --unstable-kv --allow-net --allow-read --allow-env src/test/**/*.ts",
     "test:watch": "deno test --unstable-kv --watch --allow-net --allow-read --allow-env src/test/**/*.ts",
     "kv:clear": "deno run --unstable-kv scripts/manage-kv.ts clear",
-    "kv:show": "deno run --unstable-kv scripts/manage-kv.ts show",
-    "kv:blacklist": "deno run --unstable-kv scripts/manage-kv.ts blacklist"
+    "kv:show": "deno run --unstable-kv scripts/manage-kv.ts show"
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@1"
