@@ -4,6 +4,18 @@ import { getAddressDetails, verifyData } from "npm:@lucid-evolution/lucid";
 import { Buffer } from "npm:buffer";
 import { TurnController } from "./src/TurnController.ts";
 
+const ENVIRONMENT = Deno.env.get("ENVIRONMENT") || "development";
+const FRONTEND_DOMAIN = Deno.env.get("FRONTEND_DOMAIN");
+
+if (!FRONTEND_DOMAIN) {
+  throw new Error("FRONTEND_DOMAIN is not set");
+}
+
+const CLIENT_ORIGIN = ENVIRONMENT === "production" 
+  ? FRONTEND_DOMAIN // Replace with your actual frontend domain
+  : "http://localhost:3000";
+const PORT = parseInt(Deno.env.get("SELF_PORT") || "8000");
+
 const fromHexToText = (hex: string) => Buffer.from(hex, "hex").toString("utf-8");
 
 const turnController = new TurnController();
@@ -118,7 +130,7 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, {
       status: 204,
       headers: {
-        "Access-Control-Allow-Origin": "http://localhost:3000",
+        "Access-Control-Allow-Origin": CLIENT_ORIGIN,
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type",
       },
@@ -127,7 +139,7 @@ const handler = async (req: Request): Promise<Response> => {
 
   // Add CORS headers to all responses
   const corsHeaders = {
-    "Access-Control-Allow-Origin": "http://localhost:3000",
+    "Access-Control-Allow-Origin": CLIENT_ORIGIN,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
   };
@@ -168,5 +180,5 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-console.log("Server is running on http://localhost:8000");
-await serve(handler, { port: 8000 });
+console.log(`Server is running on port ${PORT}`);
+await serve(handler, { port: PORT });
