@@ -1,18 +1,9 @@
-import { MIN_PARTICIPANTS } from "./config/constants.ts";
-import { createTransaction } from "./createTransaction.ts";
-import { lucid } from "./services/lucid.ts";
-import { Ceremony, CeremonyRecord, Participant } from "./types/index.ts";
+import { MIN_PARTICIPANTS } from "../config/constants.ts";
+import { createTransaction } from "../createTransaction.ts";
+import { lucid } from "../services/lucid.ts";
+import { Ceremony, CeremonyRecord, Participant } from "../types/index.ts";
+import { ITurnController } from "./ITurnController.ts";
 
-export interface ITurnController {
-  addParticipant(participant: Participant): void;
-  tryCreateCeremony(): Promise<string>;
-  cancelCeremony(id: string): void;
-  processCeremony(id: string): Promise<number>;
-  addWitness(id: string, witness: string): void;
-  getCeremonies(): Ceremony[];
-  getQueue(): Participant[];
-  getCeremonyHistory(): CeremonyRecord[];
-}
 
 export class InMemoryTurnController implements ITurnController {
   // queue of participants waiting to be put into a ceremony
@@ -22,8 +13,9 @@ export class InMemoryTurnController implements ITurnController {
   private ceremonyHistory: CeremonyRecord[] = [];
 
   // add a participant to the queue
-  addParticipant(participant: Participant) {
+  addParticipant(participant: Participant) : Promise<void> {
     this.queue.push(participant);
+    return Promise.resolve();
   }
 
   // try to create a ceremony
@@ -33,7 +25,6 @@ export class InMemoryTurnController implements ITurnController {
       return "0";
     }
 
-    // and remove the participants from the queue
     const ceremony: Ceremony = {
       id: crypto.randomUUID(),
       participants: [...this.queue],
@@ -56,13 +47,13 @@ export class InMemoryTurnController implements ITurnController {
   }
 
   // cancel a ceremony
-  cancelCeremony(id: string) {
+  cancelCeremony(id: string) : Promise<void> {
     // move all participants back to the queue
     const ceremony = this.ceremonies.find((c) => c.id === id);
-    if (!ceremony) return;
+    if (!ceremony) return Promise.resolve();
     this.queue.push(...ceremony.participants);
-    // remove the ceremony from the list
     this.ceremonies = this.ceremonies.filter((c) => c.id !== id);
+    return Promise.resolve();
   }
 
   async processCeremony(id: string) {
@@ -83,34 +74,32 @@ export class InMemoryTurnController implements ITurnController {
       transactionHash: ceremony.transactionHash,
     });
 
-    // if num participants = num witnesses --> continue
-    // submit the transaction
-    // remove the ceremony from the list
     this.ceremonies = this.ceremonies.filter((c) => c.id !== id);
 
     return 1;
   }
 
-  addWitness(id: string, witness: string) {
+  addWitness(id: string, witness: string) : Promise<void> {
     // add a witness to the ceremony
     const ceremony = this.ceremonies.find((c) => c.id === id);
-    if (!ceremony) return;
+    if (!ceremony) return Promise.resolve();
     // check if the witness is valid
     // check that we don't already have a witness from this signer
     // check that the signer is actually a participant in this ceremony
     ceremony.witnesses.push(witness);
+    return Promise.resolve();
   }
 
-  getCeremonies() {
-    return this.ceremonies;
+  getCeremonies() : Promise<Ceremony[]> {
+    return Promise.resolve(this.ceremonies);
   }
 
-  getQueue() {
-    return this.queue;
+  getQueue() : Promise<Participant[]> {
+    return Promise.resolve(this.queue);
   }
 
-  getCeremonyHistory() {
-    return this.ceremonyHistory;
+  getCeremonyHistory() : Promise<CeremonyRecord[]> {
+    return Promise.resolve(this.ceremonyHistory);
   }
 }
 

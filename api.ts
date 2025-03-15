@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
 import { Ceremony, Participant } from "./src/types/index.ts";
 import { getAddressDetails, verifyData } from "npm:@lucid-evolution/lucid";
 import { Buffer } from "npm:buffer";
-import { InMemoryTurnController } from "./src/TurnController.ts";
+import { InMemoryTurnController } from "./src/controllers/InMemoryTurnController.ts";
 
 const ENVIRONMENT = Deno.env.get("ENVIRONMENT") || "development";
 const FRONTEND_DOMAIN = Deno.env.get("FRONTEND_DOMAIN");
@@ -20,19 +20,19 @@ const fromHexToText = (hex: string) => Buffer.from(hex, "hex").toString("utf-8")
 
 const turnController = new InMemoryTurnController();
 
-function handleCeremonyStatus(searchParams: URLSearchParams): Response {
+async function handleCeremonyStatus(searchParams: URLSearchParams): Promise<Response> {
   const ceremonyId = searchParams.get("id");
   if (!ceremonyId) {
     return new Response("Missing ceremony id", { status: 400 });
   }
   // Check if ceremony is in active ceremonies
-  const activeCeremony = turnController.getCeremonies().find((c) => c.id === ceremonyId);
+  const activeCeremony = (await turnController.getCeremonies()).find((c) => c.id === ceremonyId);
   if (activeCeremony) {
     return new Response("pending", { status: 200 });
   }
 
   // Check if ceremony is in history
-  const historyCeremony = turnController.getCeremonyHistory().find((c) => c.id === ceremonyId);
+  const historyCeremony = (await turnController.getCeremonyHistory()).find((c) => c.id === ceremonyId);
   if (historyCeremony) {
     return new Response("on-chain", { status: 200 });
   }
@@ -71,42 +71,42 @@ async function handleSignup(req: Request): Promise<Response> {
     signedMessage,
   };
   // if all checks pass, add the participant to the queue
-  turnController.addParticipant(participant);
+  await turnController.addParticipant(participant);
   const ceremonyId = await turnController.tryCreateCeremony();
 
   return new Response(`Participant added to queue ${ceremonyId !== "0" ? `and created ceremony ${ceremonyId}` : ""}`, { status: 200 });
 }
 
-function handleListActiveCeremonies(): Response {
-  const ceremonies = turnController.getCeremonies();
+async function handleListActiveCeremonies(): Promise<Response> {
+  const ceremonies = await turnController.getCeremonies();
   const ceremoniesWithoutRecipients = ceremonies.map((ceremony: Ceremony) => ({ ...ceremony, participants: ceremony.participants.map((participant: Participant) => ({ ...participant, recipient: "" })) }));
   return new Response(JSON.stringify(ceremoniesWithoutRecipients), { status: 200 });
 }
 
-function handleQueue(): Response {
-  const queue = turnController.getQueue();
+async function handleQueue(): Promise<Response> {
+  const queue = await turnController.getQueue();
   const queueWithoutRecipients = queue.map((participant: Participant) => ({ ...participant, recipient: "" }));
   return new Response(JSON.stringify(queueWithoutRecipients), { status: 200 });
 }
 
 async function handleSubmitSignature(req: Request): Promise<Response> {
   const { id, witness } = await req.json();
-  turnController.addWitness(id, witness);
+  await turnController.addWitness(id, witness);
 
   const processed = await turnController.processCeremony(id);
 
   return new Response(`Witness added to ceremony ${processed !== 0 ? `and processed transaction submitted` : ""}`, { status: 200 });
 }
 
-function handleGet(req: Request): Response {
+async function handleGet(req: Request): Promise<Response> {
   const { pathname, searchParams } = new URL(req.url);
   switch (pathname) {
     case "/list_active_ceremonies":
-      return handleListActiveCeremonies();
+      return await handleListActiveCeremonies();
     case "/queue":
-      return handleQueue();
+      return await handleQueue();
     case "/ceremony_status":
-      return handleCeremonyStatus(searchParams);
+      return await handleCeremonyStatus(searchParams);
     default:
       return new Response("Not Found", { status: 404 });
   }
