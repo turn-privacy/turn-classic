@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
 import { Ceremony, Participant } from "./src/types/index.ts";
 import { getAddressDetails, verifyData } from "npm:@lucid-evolution/lucid";
 import { Buffer } from "npm:buffer";
-import { TurnController } from "./src/TurnController.ts";
+import { InMemoryTurnController } from "./src/TurnController.ts";
 
 const ENVIRONMENT = Deno.env.get("ENVIRONMENT") || "development";
 const FRONTEND_DOMAIN = Deno.env.get("FRONTEND_DOMAIN");
@@ -18,7 +18,7 @@ const PORT = parseInt(Deno.env.get("SELF_PORT") || "8000");
 
 const fromHexToText = (hex: string) => Buffer.from(hex, "hex").toString("utf-8");
 
-const turnController = new TurnController();
+const turnController = new InMemoryTurnController();
 
 function handleCeremonyStatus(searchParams: URLSearchParams): Response {
   const ceremonyId = searchParams.get("id");
@@ -74,7 +74,7 @@ async function handleSignup(req: Request): Promise<Response> {
   turnController.addParticipant(participant);
   const ceremonyId = await turnController.tryCreateCeremony();
 
-  return new Response(`Participant added to queue ${ceremonyId !== 0 ? `and created ceremony ${ceremonyId}` : ""}`, { status: 200 });
+  return new Response(`Participant added to queue ${ceremonyId !== "0" ? `and created ceremony ${ceremonyId}` : ""}`, { status: 200 });
 }
 
 function handleListActiveCeremonies(): Response {

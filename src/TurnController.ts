@@ -3,7 +3,18 @@ import { createTransaction } from "./createTransaction.ts";
 import { lucid } from "./services/lucid.ts";
 import { Ceremony, CeremonyRecord, Participant } from "./types/index.ts";
 
-export class TurnController {
+export interface ITurnController {
+  addParticipant(participant: Participant): void;
+  tryCreateCeremony(): Promise<string>;
+  cancelCeremony(id: string): void;
+  processCeremony(id: string): Promise<number>;
+  addWitness(id: string, witness: string): void;
+  getCeremonies(): Ceremony[];
+  getQueue(): Participant[];
+  getCeremonyHistory(): CeremonyRecord[];
+}
+
+export class InMemoryTurnController implements ITurnController {
   // queue of participants waiting to be put into a ceremony
   private queue: Participant[] = [];
   // list of ceremonies
@@ -19,7 +30,7 @@ export class TurnController {
   async tryCreateCeremony() {
     // if there are enough participants in the queue, create a ceremony
     if (this.queue.length < MIN_PARTICIPANTS) {
-      return 0;
+      return "0";
     }
 
     // and remove the participants from the queue
@@ -56,7 +67,7 @@ export class TurnController {
 
   async processCeremony(id: string) {
     const ceremony = this.ceremonies.find((c) => c.id === id);
-    if (!ceremony) return;
+    if (!ceremony) return 0;
 
     if (ceremony.participants.length + 1 !== ceremony.witnesses.length) {
       return 0;
