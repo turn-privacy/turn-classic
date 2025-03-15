@@ -19,6 +19,19 @@ export type StoredTransactionDetails = {
   signatures: [string, string][]; // Convert Map to array of [key, value] pairs for storage
 };
 
+export type Ceremony = {
+  id: string;
+  participants: Participant[];
+  transaction: string;
+  witnesses: string[];
+  transactionHash: string;
+};
+
+export type CeremonyRecord = {
+  id: string;
+  transactionHash: string;
+};
+
 export type Assets = { [key: string]: bigint };
 
 export type ClientMap = Map<WebSocketClient, string>; 

@@ -1,149 +1,10 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
-import { Participant } from "./src/types/index.ts";
-import { MIN_PARTICIPANTS, OPERATOR_FEE, UNIFORM_OUTPUT_VALUE } from "./src/config/constants.ts";
-import { calculateUserChange, lucid, operator, selectUserUtxos } from "./src/services/lucid.ts";
+import { Ceremony, Participant } from "./src/types/index.ts";
 import { getAddressDetails, verifyData } from "npm:@lucid-evolution/lucid";
 import { Buffer } from "npm:buffer";
+import { TurnController } from "./src/TurnController.ts";
 
 const fromHexToText = (hex: string) => Buffer.from(hex, "hex").toString("utf-8");
-
-type Ceremony = {
-  id: string;
-  participants: Participant[];
-  transaction: string;
-  witnesses: string[];
-  transactionHash: string;
-};
-
-type CeremonyRecord = {
-  id: string;
-  transactionHash: string;
-};
-
-const createTransaction = async (participants: Participant[]) => {
-  const operatorUtxos = await lucid.utxosAt(operator.address);
-  const tx = await participants.reduce<Promise<any>>(
-    async (accTx: Promise<any>, user: any): Promise<any> => {
-      const utxos = await selectUserUtxos(user.address);
-      const userChange = calculateUserChange(utxos);
-      return (await accTx)
-        .collectFrom(utxos)
-        .pay.ToAddress(user.recipient, { lovelace: UNIFORM_OUTPUT_VALUE })
-        .pay.ToAddress(user.address, userChange)
-        .addSigner(user.address);
-    },
-    Promise.resolve(
-      lucid
-        .newTx()
-        .collectFrom(operatorUtxos)
-        .pay.ToAddress(operator.address, {
-          lovelace: OPERATOR_FEE * BigInt(participants.length),
-        }), // operator fee
-    ),
-  );
-  const completeTx = await tx.complete();
-  return completeTx.toCBOR();
-};
-
-class TurnController {
-  // queue of participants waiting to be put into a ceremony
-  private queue: Participant[] = [];
-  // list of ceremonies
-  private ceremonies: Ceremony[] = [];
-  private ceremonyHistory: CeremonyRecord[] = [];
-
-  // add a participant to the queue
-  addParticipant(participant: Participant) {
-    this.queue.push(participant);
-  }
-
-  // try to create a ceremony
-  async tryCreateCeremony() {
-    // if there are enough participants in the queue, create a ceremony
-    if (this.queue.length < MIN_PARTICIPANTS) {
-      return 0;
-    }
-
-    // and remove the participants from the queue
-    const ceremony: Ceremony = {
-      id: crypto.randomUUID(),
-      participants: [...this.queue],
-      transaction: "",
-      witnesses: [],
-      transactionHash: "",
-    };
-
-    ceremony.transaction = await createTransaction(ceremony.participants);
-    ceremony.transactionHash = lucid.fromTx(ceremony.transaction).toHash();
-
-    const operatorWitness = await lucid.fromTx(ceremony.transaction).partialSign.withWallet();
-    ceremony.witnesses.push(operatorWitness);
-    // remove the participants from the queue
-    this.queue = this.queue.filter((p) => !ceremony.participants.includes(p));
-
-    this.ceremonies.push(ceremony);
-
-    return ceremony.id;
-  }
-
-  // cancel a ceremony
-  cancelCeremony(id: string) {
-    // move all participants back to the queue
-    const ceremony = this.ceremonies.find((c) => c.id === id);
-    if (!ceremony) return;
-    this.queue.push(...ceremony.participants);
-    // remove the ceremony from the list
-    this.ceremonies = this.ceremonies.filter((c) => c.id !== id);
-  }
-
-  async processCeremony(id: string) {
-    const ceremony = this.ceremonies.find((c) => c.id === id);
-    if (!ceremony) return;
-
-    if (ceremony.participants.length + 1 !== ceremony.witnesses.length) {
-      return 0;
-    }
-
-    const assembled = lucid.fromTx(ceremony.transaction).assemble(ceremony.witnesses);
-    const ready = await assembled.complete();
-    const submitted = await ready.submit();
-    console.log("Transaction submitted:", submitted);
-
-    this.ceremonyHistory.push({
-      id,
-      transactionHash: ceremony.transactionHash,
-    });
-
-    // if num participants = num witnesses --> continue
-    // submit the transaction
-    // remove the ceremony from the list
-    this.ceremonies = this.ceremonies.filter((c) => c.id !== id);
-
-    return 1;
-  }
-
-  addWitness(id: string, witness: string) {
-    // add a witness to the ceremony
-    const ceremony = this.ceremonies.find((c) => c.id === id);
-    if (!ceremony) return;
-    // check if the witness is valid
-    // check that we don't already have a witness from this signer
-    // check that the signer is actually a participant in this ceremony
-    ceremony.witnesses.push(witness);
-  }
-
-  getCeremonies() {
-    return this.ceremonies;
-  }
-
-  getQueue() {
-    return this.queue;
-  }
-
-  getCeremonyHistory() {
-    return this.ceremonyHistory;
-  }
-}
 
 const turnController = new TurnController();
 
@@ -225,7 +86,7 @@ async function handleSubmitSignature(req: Request): Promise<Response> {
   return new Response(`Witness added to ceremony ${processed !== 0 ? `and processed transaction submitted` : ""}`, { status: 200 });
 }
 
-async function handleGet(req: Request): Promise<Response> {
+function handleGet(req: Request): Response {
   const { pathname, searchParams } = new URL(req.url);
   switch (pathname) {
     case "/list_active_ceremonies":
