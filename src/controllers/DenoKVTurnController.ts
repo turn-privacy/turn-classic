@@ -15,6 +15,10 @@ export class DenoKVTurnController implements ITurnController {
     this.kv = kv;
   }
 
+  /*
+  todo: 
+  - ensure sender has enough funds
+  */
   async handleSignup(signedMessage: SignedMessage, payload: string): Promise<null | string> {
     const { address, recipient, context, signupTimestamp } = JSON.parse(fromHexToText(payload));
     if (context !== SIGNUP_CONTEXT) {
@@ -64,6 +68,13 @@ export class DenoKVTurnController implements ITurnController {
     return null;
   }
 
+  /*
+
+  todo: 
+  - handle failure to create transaction
+  - ensure transaction is valid given state of the network at time of creation
+
+  */
   async tryCreateCeremony(): Promise<string> {
     const participants: Participant[] = [];
     
@@ -129,6 +140,13 @@ export class DenoKVTurnController implements ITurnController {
     await atomic.commit();
   }
 
+
+  /*
+
+  todo: 
+  - handle failure to submit transaction
+
+  */
   async processCeremony(id: string): Promise<number> {
     const ceremonyEntry = await this.kv.get<Ceremony>(["ceremonies", id]);
     if (!ceremonyEntry.value) return 0;
@@ -155,12 +173,16 @@ export class DenoKVTurnController implements ITurnController {
     return 1;
   }
 
+  /*
+
+  todo: 
+  - ensure witness belongs to a participant in the ceremony who has not already provided a witness
+  - ensure the witness is a valid signature on the transaction
+
+  */
   async addWitness(id: string, witness: string): Promise<void> {
     const ceremonyEntry = await this.kv.get<Ceremony>(["ceremonies", id]);
     if (!ceremonyEntry.value) return;
-
-    // todo: ensure witness belongs to a participant in the ceremony who has not already provided a witness
-    // todo: ensure the witness is a valid signature on the transaction
 
     const ceremony = ceremonyEntry.value;
     ceremony.witnesses.push(witness);
