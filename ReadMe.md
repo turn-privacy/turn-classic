@@ -82,7 +82,7 @@ Details about a user who wants to be included in a ceremony
 
 ### Run Server Locally
 
-    deno run --allow-net --allow-read --allow-env --allow-ffi --env-file api.ts
+    deno run --allow-net --allow-read --allow-env --allow-ffi --env-file --unstable-kv api.ts
 
 ## Other helpful commands
 

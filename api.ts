@@ -3,7 +3,7 @@ import { Ceremony, Participant } from "./src/types/index.ts";
 import { getAddressDetails, verifyData } from "npm:@lucid-evolution/lucid";
 import { Buffer } from "npm:buffer";
 import { DenoKVTurnController } from "./src/controllers/DenoKVTurnController.ts";
-
+import { SIGNUP_CONTEXT } from "./src/config/constants.ts";
 const ENVIRONMENT = Deno.env.get("ENVIRONMENT") || "development";
 const FRONTEND_DOMAIN = Deno.env.get("FRONTEND_DOMAIN");
 
@@ -48,7 +48,20 @@ async function handleSignup(req: Request): Promise<Response> {
   const { signedMessage, payload } = await req.json();
 
   // get address and recipient from payload
-  const { address, recipient } = JSON.parse(fromHexToText(payload));
+  const { address, recipient, context, signupTimestamp } = JSON.parse(fromHexToText(payload));
+
+  // check the context is correct
+  if (context !== SIGNUP_CONTEXT) {
+    return new Response("Invalid context", { status: 400 });
+  }
+
+  // check the signup timestamp is within 10 minutes
+  const signupTimestampDate = new Date(signupTimestamp).getTime();
+  const currentTimestamp = new Date().getTime();
+  const timeDelta = currentTimestamp - signupTimestampDate;
+  if (timeDelta > 10 * 60 * 1000) {
+    return new Response("Signup timestamp is too old", { status: 400 });
+  }
 
   const addressDetails = getAddressDetails(address);
 
