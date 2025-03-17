@@ -1,9 +1,6 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
 import { Ceremony, Participant } from "./src/types/index.ts";
-import { getAddressDetails, verifyData } from "npm:@lucid-evolution/lucid";
-import { Buffer } from "npm:buffer";
 import { DenoKVTurnController } from "./src/controllers/DenoKVTurnController.ts";
-import { SIGNUP_CONTEXT } from "./src/config/constants.ts";
 const ENVIRONMENT = Deno.env.get("ENVIRONMENT") || "development";
 const FRONTEND_DOMAIN = Deno.env.get("FRONTEND_DOMAIN");
 
@@ -15,8 +12,6 @@ const CLIENT_ORIGIN = ENVIRONMENT === "production"
   ? FRONTEND_DOMAIN // Replace with your actual frontend domain
   : "http://localhost:3000";
 const PORT = parseInt(Deno.env.get("SELF_PORT") || "8000");
-
-const fromHexToText = (hex: string) => Buffer.from(hex, "hex").toString("utf-8");
 
 // Initialize KV store and controller
 const kv = await Deno.openKv();
@@ -47,48 +42,12 @@ async function handleSignup(req: Request): Promise<Response> {
   console.log("handleSignup");
   const { signedMessage, payload } = await req.json();
 
-  // get address and recipient from payload
-  const { address, recipient, context, signupTimestamp } = JSON.parse(fromHexToText(payload));
-
-  // check the context is correct
-  if (context !== SIGNUP_CONTEXT) {
-    return new Response("Invalid context", { status: 400 });
+  const failureReason = await turnController.handleSignup(signedMessage, payload);
+  if (failureReason) {
+    return new Response(failureReason, { status: 400 });
   }
 
-  // check the signup timestamp is within 10 minutes
-  const signupTimestampDate = new Date(signupTimestamp).getTime();
-  const currentTimestamp = new Date().getTime();
-  const timeDelta = currentTimestamp - signupTimestampDate;
-  if (timeDelta > 10 * 60 * 1000) {
-    return new Response("Signup timestamp is too old", { status: 400 });
-  }
-
-  const addressDetails = getAddressDetails(address);
-
-  // check the signature is valid
-  const isValidSignature = verifyData(
-    addressDetails.address.hex,
-    addressDetails.paymentCredential!.hash,
-    payload,
-    signedMessage,
-  );
-
-  if (!isValidSignature) {
-    return new Response("Invalid signature", { status: 400 });
-  }
-
-  { // check a whole bunch of things
-  }
-
-  const participant: Participant = {
-    address,
-    recipient,
-    signedMessage,
-  };
-  // if all checks pass, add the participant to the queue
-  await turnController.addParticipant(participant);
   const ceremonyId = await turnController.tryCreateCeremony();
-
   return new Response(`Participant added to queue ${ceremonyId !== "0" ? `and created ceremony ${ceremonyId}` : ""}`, { status: 200 });
 }
 

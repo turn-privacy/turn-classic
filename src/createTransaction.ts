@@ -4,13 +4,14 @@ import { operator } from "./services/lucid.ts";
 import { selectUserUtxos } from "./services/lucid.ts";
 import { calculateUserChange } from "./services/lucid.ts";
 import { OPERATOR_FEE, UNIFORM_OUTPUT_VALUE } from "./config/constants.ts";
+import { TxBuilder } from "npm:@lucid-evolution/lucid";
 
 const two_hours = 2 * 60 * 60 * 1000;
 
 export const createTransaction = async (participants: Participant[]) => {
   const operatorUtxos = await lucid.utxosAt(operator.address);
-  const tx = await participants.reduce<Promise<any>>(
-    async (accTx: Promise<any>, user: any): Promise<any> => {
+  const tx = await participants.reduce<Promise<TxBuilder>>(
+    async (accTx: Promise<TxBuilder>, user: Participant): Promise<TxBuilder> => {
       const utxos = await selectUserUtxos(user.address);
       const userChange = calculateUserChange(utxos);
       return (await accTx)

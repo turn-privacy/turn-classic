@@ -1,3 +1,4 @@
+import { SignedMessage } from "npm:@lucid-evolution/lucid";
 import { MIN_PARTICIPANTS } from "../config/constants.ts";
 import { createTransaction } from "../createTransaction.ts";
 import { lucid } from "../services/lucid.ts";
@@ -12,14 +13,8 @@ export class InMemoryTurnController implements ITurnController {
   private ceremonies: Ceremony[] = [];
   private ceremonyHistory: CeremonyRecord[] = [];
 
-  // add a participant to the queue
-  addParticipant(participant: Participant) : Promise<void> {
-    // todo: ensure the participant is not already in the queue or an active ceremony
-    // todo: ensure the recipient is not already in the queue or an active ceremony
-    // todo: ensure the recipient has no transaction history 
-
-    this.queue.push(participant);
-    return Promise.resolve();
+  handleSignup(signedMessage: SignedMessage, payload: string): Promise<null | string> {
+    return Promise.resolve(null);
   }
 
   // try to create a ceremony

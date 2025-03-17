@@ -1,8 +1,12 @@
-import { MIN_PARTICIPANTS } from "../config/constants.ts";
+import { getAddressDetails, SignedMessage, verifyData } from "npm:@lucid-evolution/lucid";
+import { MIN_PARTICIPANTS, SIGNUP_CONTEXT } from "../config/constants.ts";
 import { createTransaction } from "../createTransaction.ts";
 import { lucid } from "../services/lucid.ts";
 import { Ceremony, CeremonyRecord, Participant } from "../types/index.ts";
 import { ITurnController } from "./ITurnController.ts";
+import { Buffer } from "npm:buffer";
+
+const fromHexToText = (hex: string) => Buffer.from(hex, "hex").toString("utf-8");
 
 export class DenoKVTurnController implements ITurnController {
   private kv: Deno.Kv;
@@ -11,13 +15,42 @@ export class DenoKVTurnController implements ITurnController {
     this.kv = kv;
   }
 
-  async addParticipant(participant: Participant): Promise<void> {
-    // todo: ensure the participant is not already in the queue or an active ceremony
-    // todo: ensure the recipient is not already in the queue or an active ceremony
-    // todo: ensure the recipient has no transaction history 
+  async handleSignup(signedMessage: SignedMessage, payload: string): Promise<null | string> {
+    const { address, recipient, context, signupTimestamp } = JSON.parse(fromHexToText(payload));
+    if (context !== SIGNUP_CONTEXT) {
+      return "Invalid context";
+    }
+    if (Date.now() - signupTimestamp > 10 * 60 * 1000) {
+      return "Signup timestamp is too old";
+    }
+
+    // todo: ensure recipient is a valid address
+    // todo: ensure the participant address is not already in the queue
+
+    const addressDetails = getAddressDetails(address);
+
+    const isValidSignature = verifyData(
+      addressDetails.address.hex,
+      addressDetails.paymentCredential!.hash,
+      payload,
+      signedMessage,
+    );
+
+    if (!isValidSignature) {
+      return "Invalid signature";
+    }
+
+    const participant: Participant = {
+      address,
+      recipient,
+      signedMessage,
+    };
+
     await this.kv.atomic()
       .set(["queue", Date.now(), participant.address], participant)
       .commit();
+
+    return null;
   }
 
   async tryCreateCeremony(): Promise<string> {
