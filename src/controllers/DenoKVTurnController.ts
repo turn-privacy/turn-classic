@@ -24,8 +24,19 @@ export class DenoKVTurnController implements ITurnController {
       return "Signup timestamp is too old";
     }
 
-    // todo: ensure recipient is a valid address
-    // todo: ensure the participant address is not already in the queue
+    for (const participant of await this.getQueue()) {
+      if (participant.address === address) 
+        return "Participant already in queue";
+      
+      // if (participant.recipient === recipient)  // todo: enable in production
+      //   return "Recipient already in queue";
+    }
+
+    try {
+      getAddressDetails(recipient);
+    } catch {
+      return "Invalid recipient address";
+    }
 
     const addressDetails = getAddressDetails(address);
 
