@@ -1,4 +1,4 @@
-import { getAddressDetails, paymentCredentialOf, SignedMessage, verifyData } from "npm:@lucid-evolution/lucid";
+import { fromHex, getAddressDetails, paymentCredentialOf, SignedMessage, verifyData } from "npm:@lucid-evolution/lucid";
 import { MIN_PARTICIPANTS, SIGNUP_CONTEXT } from "../config/constants.ts";
 import { createTransaction } from "../createTransaction.ts";
 import { lucid } from "../services/lucid.ts";
@@ -191,8 +191,9 @@ export class DenoKVTurnController implements ITurnController {
 
     { // ensure witness is correct
       const witnessPaymentCredentialHash = CML.TransactionWitnessSet.from_cbor_hex(witness).vkeywitnesses()?.get(0).vkey().hash().to_hex();
-      if (!witnessPaymentCredentialHash)
+      if (!witnessPaymentCredentialHash) {
         return "Invalid witness - could not decode witness";
+      }
 
       console.log(`Witness public key hash: ${witnessPaymentCredentialHash}`);
 
@@ -205,14 +206,32 @@ export class DenoKVTurnController implements ITurnController {
       }
 
       // witness must not have already been added
-      const alreadySigned : string[] = ceremony.witnesses.map((witness) => CML.TransactionWitnessSet.from_cbor_hex(witness).vkeywitnesses()?.get(0).vkey().hash().to_hex()).filter((hash) => hash !== undefined);
+      const alreadySigned: string[] = ceremony.witnesses.map((witness) => CML.TransactionWitnessSet.from_cbor_hex(witness).vkeywitnesses()?.get(0).vkey().hash().to_hex()).filter((hash) => hash !== undefined);
       console.log(`Participants who have already signed: `, alreadySigned);
 
       if (alreadySigned.includes(witnessPaymentCredentialHash)) {
         return "Witness already added";
       }
 
+      { // witness must ACTUALLY be a signature on THIS transaction
+        const tx: CML.Transaction = CML.Transaction.from_cbor_hex(ceremony.transaction);
+        const txBody: CML.TransactionBody = tx.body();
+        const txBodyHash: CML.TransactionHash = CML.hash_transaction(txBody);
+
+        const txWitness : CML.Vkeywitness | undefined = CML.TransactionWitnessSet.from_cbor_hex(witness).vkeywitnesses()?.get(0);
+        if (undefined === txWitness) {
+          throw new Error("No witness found");
+        }
+
+        const publicKey = txWitness.vkey();
+        const isValidSignature = publicKey.verify(fromHex(txBodyHash.to_hex()), txWitness.ed25519_signature());
+        if (!isValidSignature) {
+          return "Invalid witness - signature does not match transaction";
+        }
+        console.log(`%cWitness is valid for this transaction`, "color: green");
+      }
     }
+
     ceremony.witnesses.push(witness);
 
     await this.kv.set(["ceremonies", id], ceremony);
