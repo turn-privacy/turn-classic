@@ -67,8 +67,6 @@ export class DenoKVTurnController implements ITurnController {
       signedMessage,
     };
 
-    console.log(`Participant with address ${participant.address} has public key ${participant.signedMessage.key} (${participant.signedMessage.key.length} key length)`);
-
     await this.kv.atomic()
       .set(["queue", Date.now(), participant.address], participant)
       .commit();
@@ -183,7 +181,6 @@ export class DenoKVTurnController implements ITurnController {
   /*
 
   todo:
-  - ensure witness belongs to a participant in the ceremony who has not already provided a witness
   - ensure the witness is a valid signature on the transaction
 
   */
@@ -199,13 +196,22 @@ export class DenoKVTurnController implements ITurnController {
 
       console.log(`Witness public key hash: ${witnessPaymentCredentialHash}`);
 
-      // list expected public key hashes
       const expectedPaymentCredentialHashes = ceremony.participants.map((participant) => paymentCredentialOf(participant.address).hash);
       console.log(`Expected payment credential hashes: `, expectedPaymentCredentialHashes);
 
+      // witness must belong to one of the participants
       if (!expectedPaymentCredentialHashes.includes(witnessPaymentCredentialHash)) {
         return "Invalid witness";
       }
+
+      // witness must not have already been added
+      const alreadySigned : string[] = ceremony.witnesses.map((witness) => CML.TransactionWitnessSet.from_cbor_hex(witness).vkeywitnesses()?.get(0).vkey().hash().to_hex()).filter((hash) => hash !== undefined);
+      console.log(`Participants who have already signed: `, alreadySigned);
+
+      if (alreadySigned.includes(witnessPaymentCredentialHash)) {
+        return "Witness already added";
+      }
+
     }
     ceremony.witnesses.push(witness);
 
