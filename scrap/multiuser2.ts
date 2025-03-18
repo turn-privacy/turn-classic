@@ -1,4 +1,7 @@
-import { Assets, Emulator, fromText, generateSeedPhrase, Lucid, mintingPolicyToId, scriptFromNative, toText, TxBuilder, UTxO } from "npm:@lucid-evolution/lucid";
+import { Assets, Emulator, fromText, generateSeedPhrase, Lucid, mintingPolicyToId, paymentCredentialOf, scriptFromNative, toText, TxBuilder, UTxO } from "npm:@lucid-evolution/lucid";
+import * as CML from "npm:@anastasia-labs/cardano-multiplatform-lib-nodejs";
+// import * as CSL from "npm:@emurgo/cardano-serialization-lib-nodejs";
+import { Buffer } from "node:buffer";
 
 
 /*
@@ -182,6 +185,21 @@ const operatorWitness = await lucid.fromTx(rawUnsigned).partialSign.withWallet()
 
 lucid.selectWallet.fromSeed(alice.seed);
 const aliceWitness = await lucid.fromTx(rawUnsigned).partialSign.withWallet();
+
+{   // output between these curly braces will be green
+    // use CML to decode the witness
+    console.log(`%cAlice's witness ${aliceWitness}`, "color: green");
+    const paymentCredential = paymentCredentialOf(alice.address);
+    console.log(`%cAlice's payment credential ${paymentCredential.hash}`, "color: green");
+    // const decoded = CML.Vkeywitness.from_cbor_hex(aliceWitness);
+    // const decoded = CML.TransactionWitnessSet.from_cbor_hex(aliceWitness).vkeywitnesses()?.get(0).vkey().to_bech32();
+    // const decoded = CML.TransactionWitnessSet.from_cbor_hex(aliceWitness).vkeywitnesses()?.get(0).vkey().to_raw_bytes();
+    const decoded = CML.TransactionWitnessSet.from_cbor_hex(aliceWitness).vkeywitnesses()?.get(0).vkey().hash().to_hex();
+    // const decoded = CML.Vkeywitness.from_json(aliceWitness);
+    console.log(`%cDecoded value: ${decoded}`, "color: green");
+    // show alice address
+    console.log(`%cAlice's address ${alice.address}`, "color: green");
+}
 
 lucid.selectWallet.fromSeed(bob.seed);
 const bobWitness = await lucid.fromTx(rawUnsigned).partialSign.withWallet();

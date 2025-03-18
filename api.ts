@@ -65,7 +65,10 @@ async function handleQueue(): Promise<Response> {
 
 async function handleSubmitSignature(req: Request): Promise<Response> {
   const { id, witness } = await req.json();
-  await turnController.addWitness(id, witness);
+  const failureReason = await turnController.addWitness(id, witness);
+  if (failureReason) {
+    return new Response(failureReason, { status: 400 });
+  }
 
   const processed = await turnController.processCeremony(id);
 

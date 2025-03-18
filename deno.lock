@@ -3,6 +3,8 @@
   "specifiers": {
     "jsr:@std/assert@1": "1.0.11",
     "jsr:@std/internal@^1.0.5": "1.0.5",
+    "npm:@anastasia-labs/cardano-multiplatform-lib-nodejs@*": "6.0.2-3",
+    "npm:@emurgo/cardano-serialization-lib-nodejs@*": "14.1.1",
     "npm:@lucid-evolution/lucid@*": "0.4.23_effect@3.13.6",
     "npm:buffer@*": "6.0.3"
   },
@@ -164,6 +166,9 @@
     },
     "@emurgo/cardano-message-signing-nodejs@1.1.0": {
       "integrity": "sha512-PQRc8K8wZshEdmQenNUzVtiI8oJNF/1uAnBhidee5C4o1l2mDLOW+ur46HWHIFKQ6x8mSJTllcjMscHgzju0gQ=="
+    },
+    "@emurgo/cardano-serialization-lib-nodejs@14.1.1": {
+      "integrity": "sha512-UpQzrDOolgssJHeaaMUS+ShDTNBHCnzgKd95G/2Hg9+l8i3zTJ7dlGQDEk/35LgLt8twCHWZDCytrpx7PY12ww=="
     },
     "@foxglove/crc@0.0.3": {
       "integrity": "sha512-DjIZsnL3CyP/yQ/vUYA9cjrD0a/8YXejI5ZmsaOiT16cLfZcTwaCxIN01/ys4jsy+dZCQ/9DnWFn7AEFbiMDaA=="

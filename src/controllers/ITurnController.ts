@@ -6,7 +6,7 @@ export interface ITurnController {
   tryCreateCeremony(): Promise<string>;
   cancelCeremony(id: string): Promise<void>;
   processCeremony(id: string): Promise<number>;
-  addWitness(id: string, witness: string): Promise<void>;
+  addWitness(id: string, witness: string): Promise<null | string>;
   getCeremonies(): Promise<Ceremony[]>;
   getQueue(): Promise<Participant[]>;
   getCeremonyHistory(): Promise<CeremonyRecord[]>;

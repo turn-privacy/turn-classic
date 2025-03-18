@@ -95,6 +95,12 @@ To empty the deno kv database
 
     deno task kv:clear
 
+## Scraps
+
+`/scrap` contains code which is not part of the server but is still helpful for development/experimenting/modeling.
+
+    deno run --allow-read --allow-env --allow-ffi scrap/multiuser2.ts
+
 
 ## Balance Math
 
@@ -248,7 +254,6 @@ Please expect product announcements to come with a signed message containing all
 https://verifycardanomessage.cardanofoundation.org/
 
 My public key is a5010102583901a8adfd9249633f7bf0178a199edf3bc4ef071b403904cfd5f273ed1d0727ba7e3685b335ef03dbcaf6a43ae5659d3ed88677ddfb3691d14c03272006215820c46dce4d20a26e223530f4a242f7755cfc6192cc539b4a6f3361ead76bd003c2
-
 
 
 ## Resources

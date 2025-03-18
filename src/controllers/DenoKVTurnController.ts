@@ -1,12 +1,17 @@
-import { getAddressDetails, SignedMessage, verifyData } from "npm:@lucid-evolution/lucid";
+import { getAddressDetails, paymentCredentialOf, SignedMessage, verifyData } from "npm:@lucid-evolution/lucid";
 import { MIN_PARTICIPANTS, SIGNUP_CONTEXT } from "../config/constants.ts";
 import { createTransaction } from "../createTransaction.ts";
 import { lucid } from "../services/lucid.ts";
 import { Ceremony, CeremonyRecord, Participant } from "../types/index.ts";
 import { ITurnController } from "./ITurnController.ts";
 import { Buffer } from "npm:buffer";
+import * as CML from "npm:@anastasia-labs/cardano-multiplatform-lib-nodejs";
+// import * as CML from "npm:@anastasia-labs/cardano-multiplatform-lib-nodejs";
 
+// console.log(CML);
 const fromHexToText = (hex: string) => Buffer.from(hex, "hex").toString("utf-8");
+
+// const participantToPublicKey = (participant: Participant) : string => participant.signedMessage.key;
 
 export class DenoKVTurnController implements ITurnController {
   private kv: Deno.Kv;
@@ -16,7 +21,7 @@ export class DenoKVTurnController implements ITurnController {
   }
 
   /*
-  todo: 
+  todo:
   - ensure sender has enough funds
   */
   async handleSignup(signedMessage: SignedMessage, payload: string): Promise<null | string> {
@@ -29,9 +34,10 @@ export class DenoKVTurnController implements ITurnController {
     }
 
     for (const participant of await this.getQueue()) {
-      if (participant.address === address) 
+      if (participant.address === address) {
         return "Participant already in queue";
-      
+      }
+
       // if (participant.recipient === recipient)  // todo: enable in production
       //   return "Recipient already in queue";
     }
@@ -61,6 +67,8 @@ export class DenoKVTurnController implements ITurnController {
       signedMessage,
     };
 
+    console.log(`Participant with address ${participant.address} has public key ${participant.signedMessage.key} (${participant.signedMessage.key.length} key length)`);
+
     await this.kv.atomic()
       .set(["queue", Date.now(), participant.address], participant)
       .commit();
@@ -70,14 +78,14 @@ export class DenoKVTurnController implements ITurnController {
 
   /*
 
-  todo: 
+  todo:
   - handle failure to create transaction
   - ensure transaction is valid given state of the network at time of creation
 
   */
   async tryCreateCeremony(): Promise<string> {
     const participants: Participant[] = [];
-    
+
     // Get participants from queue in order
     const iter = this.kv.list({ prefix: ["queue"] });
     for await (const entry of iter) {
@@ -105,10 +113,10 @@ export class DenoKVTurnController implements ITurnController {
 
     // Store ceremony and remove participants from queue atomically
     const atomic = this.kv.atomic();
-    
+
     // Add ceremony
     atomic.set(["ceremonies", ceremony.id], ceremony);
-    
+
     // Remove used participants from queue
     for (const participant of participants) {
       const queueIter = this.kv.list({ prefix: ["queue"] });
@@ -129,21 +137,20 @@ export class DenoKVTurnController implements ITurnController {
     if (!ceremonyEntry.value) return;
 
     const atomic = this.kv.atomic();
-    
+
     // Move participants back to queue
     for (const participant of ceremonyEntry.value.participants) {
       atomic.set(["queue", Date.now(), participant.address], participant);
     }
-    
+
     // Remove ceremony
     atomic.delete(["ceremonies", id]);
     await atomic.commit();
   }
 
-
   /*
 
-  todo: 
+  todo:
   - handle failure to submit transaction
 
   */
@@ -175,19 +182,35 @@ export class DenoKVTurnController implements ITurnController {
 
   /*
 
-  todo: 
+  todo:
   - ensure witness belongs to a participant in the ceremony who has not already provided a witness
   - ensure the witness is a valid signature on the transaction
 
   */
-  async addWitness(id: string, witness: string): Promise<void> {
+  async addWitness(id: string, witness: string): Promise<null | string> {
     const ceremonyEntry = await this.kv.get<Ceremony>(["ceremonies", id]);
-    if (!ceremonyEntry.value) return;
-
+    if (!ceremonyEntry.value) return null;
     const ceremony = ceremonyEntry.value;
+
+    { // ensure witness is correct
+      const witnessPaymentCredentialHash = CML.TransactionWitnessSet.from_cbor_hex(witness).vkeywitnesses()?.get(0).vkey().hash().to_hex();
+      if (!witnessPaymentCredentialHash)
+        return "Invalid witness - could not decode witness";
+
+      console.log(`Witness public key hash: ${witnessPaymentCredentialHash}`);
+
+      // list expected public key hashes
+      const expectedPaymentCredentialHashes = ceremony.participants.map((participant) => paymentCredentialOf(participant.address).hash);
+      console.log(`Expected payment credential hashes: `, expectedPaymentCredentialHashes);
+
+      if (!expectedPaymentCredentialHashes.includes(witnessPaymentCredentialHash)) {
+        return "Invalid witness";
+      }
+    }
     ceremony.witnesses.push(witness);
-    
+
     await this.kv.set(["ceremonies", id], ceremony);
+    return null;
   }
 
   async getCeremonies(): Promise<Ceremony[]> {
@@ -216,4 +239,4 @@ export class DenoKVTurnController implements ITurnController {
     }
     return history;
   }
-} 
+}

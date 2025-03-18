@@ -78,16 +78,16 @@ export class InMemoryTurnController implements ITurnController {
     return 1;
   }
 
-  addWitness(id: string, witness: string) : Promise<void> {
+  addWitness(id: string, witness: string) : Promise<null | string> {
     // add a witness to the ceremony
     const ceremony = this.ceremonies.find((c) => c.id === id);
-    if (!ceremony) return Promise.resolve();
+    if (!ceremony) return Promise.resolve(null);
     
     // todo: ensure witness belongs to a participant in the ceremony who has not already provided a witness
     // todo: ensure the witness is a valid signature on the transaction
     
     ceremony.witnesses.push(witness);
-    return Promise.resolve();
+    return Promise.resolve(null);
   }
 
   getCeremonies() : Promise<Ceremony[]> {
