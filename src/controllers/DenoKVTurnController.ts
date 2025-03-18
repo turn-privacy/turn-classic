@@ -195,12 +195,9 @@ export class DenoKVTurnController implements ITurnController {
         return "Failed to decode witness";
       }
 
-      const witnessPaymentCredentialHash = txWitness.vkey().hash().to_hex();
-
-      console.log(`Witness public key hash: ${witnessPaymentCredentialHash}`);
-
+      const publicKey = txWitness.vkey();
+      const witnessPaymentCredentialHash = publicKey.hash().to_hex();
       const expectedPaymentCredentialHashes = ceremony.participants.map((participant) => paymentCredentialOf(participant.address).hash);
-      console.log(`Expected payment credential hashes: `, expectedPaymentCredentialHashes);
 
       // witness must belong to one of the participants
       if (!expectedPaymentCredentialHashes.includes(witnessPaymentCredentialHash)) {
@@ -209,8 +206,6 @@ export class DenoKVTurnController implements ITurnController {
 
       // witness must not have already been added
       const alreadySigned: string[] = ceremony.witnesses.map((witness) => CML.TransactionWitnessSet.from_cbor_hex(witness).vkeywitnesses()?.get(0).vkey().hash().to_hex()).filter((hash) => hash !== undefined);
-      console.log(`Participants who have already signed: `, alreadySigned);
-
       if (alreadySigned.includes(witnessPaymentCredentialHash)) {
         return "Witness already added";
       }
@@ -220,7 +215,6 @@ export class DenoKVTurnController implements ITurnController {
         const txBody: CML.TransactionBody = tx.body();
         const txBodyHash: CML.TransactionHash = CML.hash_transaction(txBody);
 
-        const publicKey = txWitness.vkey();
         const isValidSignature = publicKey.verify(fromHex(txBodyHash.to_hex()), txWitness.ed25519_signature());
         if (!isValidSignature) {
           return "Invalid witness - signature does not match transaction";
