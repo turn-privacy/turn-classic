@@ -190,10 +190,12 @@ export class DenoKVTurnController implements ITurnController {
     const ceremony = ceremonyEntry.value;
 
     { // ensure witness is correct
-      const witnessPaymentCredentialHash = CML.TransactionWitnessSet.from_cbor_hex(witness).vkeywitnesses()?.get(0).vkey().hash().to_hex();
-      if (!witnessPaymentCredentialHash) {
-        return "Invalid witness - could not decode witness";
+      const txWitness: CML.Vkeywitness | undefined = CML.TransactionWitnessSet.from_cbor_hex(witness).vkeywitnesses()?.get(0);
+      if (undefined === txWitness) {
+        return "Failed to decode witness";
       }
+
+      const witnessPaymentCredentialHash = txWitness.vkey().hash().to_hex();
 
       console.log(`Witness public key hash: ${witnessPaymentCredentialHash}`);
 
@@ -218,17 +220,12 @@ export class DenoKVTurnController implements ITurnController {
         const txBody: CML.TransactionBody = tx.body();
         const txBodyHash: CML.TransactionHash = CML.hash_transaction(txBody);
 
-        const txWitness : CML.Vkeywitness | undefined = CML.TransactionWitnessSet.from_cbor_hex(witness).vkeywitnesses()?.get(0);
-        if (undefined === txWitness) {
-          throw new Error("No witness found");
-        }
-
         const publicKey = txWitness.vkey();
         const isValidSignature = publicKey.verify(fromHex(txBodyHash.to_hex()), txWitness.ed25519_signature());
         if (!isValidSignature) {
           return "Invalid witness - signature does not match transaction";
         }
-        console.log(`%cWitness is valid for this transaction`, "color: green");
+        console.log(`%cWitness is valid for this transaction, is expected, and has not already been added.`, "color: green");
       }
     }
 
