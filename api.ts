@@ -8,7 +8,7 @@ if (!FRONTEND_DOMAIN) {
   throw new Error("FRONTEND_DOMAIN is not set");
 }
 
-const CLIENT_ORIGIN = ENVIRONMENT === "production" 
+const CLIENT_ORIGIN = ENVIRONMENT === "production"
   ? FRONTEND_DOMAIN // Replace with your actual frontend domain
   : "http://localhost:3000";
 const PORT = parseInt(Deno.env.get("SELF_PORT") || "8000");
@@ -142,6 +142,13 @@ const handler = async (req: Request): Promise<Response> => {
     Object.entries(corsHeaders).forEach(([key, value]) => {
       newHeaders.set(key, value);
     });
+
+    try {
+      await turnController.checkBadCeremonies();
+    }
+    catch (error) {
+      console.error("Error checking for bad ceremonies:", error);
+    }
 
     return new Response(response.body, {
       status: response.status,

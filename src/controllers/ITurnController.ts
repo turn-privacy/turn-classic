@@ -10,4 +10,5 @@ export interface ITurnController {
   getCeremonies(): Promise<Ceremony[]>;
   getQueue(): Promise<Participant[]>;
   getCeremonyHistory(): Promise<CeremonyRecord[]>;
+  checkBadCeremonies(): Promise<void>;
 }

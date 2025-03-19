@@ -1,8 +1,8 @@
-import { fromHex, getAddressDetails, paymentCredentialOf, SignedMessage, verifyData } from "npm:@lucid-evolution/lucid";
+import { fromHex, getAddressDetails, paymentCredentialOf, SignedMessage, slotToUnixTime, verifyData } from "npm:@lucid-evolution/lucid";
 import { MIN_PARTICIPANTS, SIGNUP_CONTEXT } from "../config/constants.ts";
 import { createTransaction } from "../createTransaction.ts";
 import { lucid } from "../services/lucid.ts";
-import { Ceremony, CeremonyRecord, Participant } from "../types/index.ts";
+import { BlacklistEntry, Ceremony, CeremonyRecord, Participant } from "../types/index.ts";
 import { ITurnController } from "./ITurnController.ts";
 import { Buffer } from "npm:buffer";
 import * as CML from "npm:@anastasia-labs/cardano-multiplatform-lib-nodejs";
@@ -33,6 +33,12 @@ export class DenoKVTurnController implements ITurnController {
       return "Signup timestamp is too old";
     }
 
+    // check if they are blacklisted
+    const isBlacklisted : Deno.KvEntryMaybe<BlacklistEntry> = await this.kv.get<BlacklistEntry>(["blacklist", paymentCredentialOf(address).hash]);
+    if (isBlacklisted.value) {
+      return "Participant is blacklisted for reason: " + isBlacklisted.value.reason;
+    }
+
     for (const participant of await this.getQueue()) {
       if (participant.address === address) {
         return "Participant already in queue";
@@ -40,6 +46,14 @@ export class DenoKVTurnController implements ITurnController {
 
       // if (participant.recipient === recipient)  // todo: enable in production
       //   return "Recipient already in queue";
+    }
+
+    // not already in a ceremony
+    const ceremonies = await this.getCeremonies();
+    for (const ceremony of ceremonies) {
+      if (ceremony.participants.some((participant) => participant.address === address)) {
+        return "Participant already in a ceremony";
+      }
     }
 
     try {
@@ -178,12 +192,6 @@ export class DenoKVTurnController implements ITurnController {
     return 1;
   }
 
-  /*
-
-  todo:
-  - ensure the witness is a valid signature on the transaction
-
-  */
   async addWitness(id: string, witness: string): Promise<null | string> {
     const ceremonyEntry = await this.kv.get<Ceremony>(["ceremonies", id]);
     if (!ceremonyEntry.value) return null;
@@ -227,6 +235,83 @@ export class DenoKVTurnController implements ITurnController {
 
     await this.kv.set(["ceremonies", id], ceremony);
     return null;
+  }
+
+  // todo: ensure this accesses kv in a thread-safe way
+  async checkBadCeremonies(): Promise<void> {
+    // Start an atomic transaction
+    const atomic = this.kv.atomic();
+
+    // Get the last check timestamp
+    const lastCheck = await this.kv.get<number | null>(["last_bad_ceremony_check_timestamp"]);
+    
+    // If we have a timestamp and it's less than 10 minutes old, return early
+    // if (lastCheck.value !== null && Date.now() - lastCheck.value < 10 * 60 * 1000) {
+    if (lastCheck.value !== null && Date.now() - lastCheck.value < 10 * 1000) {
+      return;
+    }
+
+    // Get all ceremonies
+    const ceremonies = await this.getCeremonies();
+    if (ceremonies.length === 0) {
+      return;
+    }
+
+    // Set the last check timestamp in the atomic transaction
+    atomic.set(["last_bad_ceremony_check_timestamp"], Date.now());
+
+    const network = lucid.config().network;
+    if (undefined === network) {
+      throw new Error("Network is undefined in lucid config");
+    }
+
+    // Process each ceremony
+    for (const ceremony of ceremonies) {
+        const tx: CML.Transaction = CML.Transaction.from_cbor_hex(ceremony.transaction);
+        const txBody: CML.TransactionBody = tx.body();
+        const ttlSlot = txBody.ttl();
+        if (undefined === ttlSlot) {
+          throw new Error("TTL slot is undefined in transaction");
+        }
+
+        const expirationTime = slotToUnixTime(network, Number(ttlSlot));
+        console.log(`\nCeremony ${ceremony.id} expires at ${expirationTime}`);
+        const delta = expirationTime - Date.now();
+        console.log(`Time until expiration: ${delta}ms`);
+
+        if (delta < 0) { // ceremony has expired
+          console.log(`Ceremony ${ceremony.id} has expired`);
+          // grab all payment credentials who have failed to sign
+          const paymentCredentials = ceremony.participants.map((participant) => paymentCredentialOf(participant.address).hash);
+          const thoseWhoSigned = ceremony.witnesses.map((witness) => CML.TransactionWitnessSet.from_cbor_hex(witness).vkeywitnesses()?.get(0).vkey().hash().to_hex()).filter((hash) => hash !== undefined);
+          const thoseWhoFailedToSign = paymentCredentials.filter((cred) => !thoseWhoSigned.includes(cred));
+
+          // add those who failed to sign to the blacklist
+          for (const cred of thoseWhoFailedToSign) {
+            atomic.set(["blacklist", cred], {
+              timestamp: Date.now(),
+              reason: "Failed to sign ceremony",
+            });
+          }
+
+          // everyone else gets put back in the queue
+          for (const participant of ceremony.participants) {
+            // if they are in those who failed to sign, skip
+            if (thoseWhoFailedToSign.includes(paymentCredentialOf(participant.address).hash)) {
+              continue;
+            }
+
+            // otherwise, add them back to the queue and delete the ceremony
+            atomic.set(["queue", Date.now(), participant.address], participant);
+          }
+          atomic.delete(["ceremonies", ceremony.id]);
+        }
+
+        // check all inputs are still unspent
+    }
+
+    // Commit all changes atomically
+    await atomic.commit();
   }
 
   async getCeremonies(): Promise<Ceremony[]> {

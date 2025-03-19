@@ -27,7 +27,8 @@ export const createTransaction = async (participants: Participant[]) => {
         .pay.ToAddress(operator.address, {
           lovelace: OPERATOR_FEE * BigInt(participants.length),
         })
-        .validTo(Date.now() + two_hours),
+        // .validTo(Date.now() + two_hours)
+        .validTo(Date.now() + 60 * 1000)
     ),
   );
   const completeTx = await tx.complete();

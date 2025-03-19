@@ -90,6 +90,9 @@ export class InMemoryTurnController implements ITurnController {
     return Promise.resolve(null);
   }
 
+  async checkBadCeremonies() {
+  }
+
   getCeremonies() : Promise<Ceremony[]> {
     return Promise.resolve(this.ceremonies);
   }

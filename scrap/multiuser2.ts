@@ -178,10 +178,16 @@ const tx = await [alice, bob, charlie].reduce<Promise<TxBuilder>>(
       .newTx()
       .collectFrom(operatorUtxos)
       .pay.ToAddress(operator.address, { lovelace: operatorFee * 3n }) // operator fee
-      .validTo(emulator.now() + (15 * minute)),
+      .validTo(emulator.now() + (15 * minute))
   ),
 );
 const completeTx = await tx.complete();
+
+{ // ttl info
+  const tx: CML.Transaction = CML.Transaction.from_cbor_hex(completeTx.toCBOR());
+  const txBody: CML.TransactionBody = tx.body();
+  console.log(txBody.ttl());
+}
 
 console.log("Transaction ID:", completeTx.toHash());
 

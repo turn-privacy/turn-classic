@@ -32,6 +32,11 @@ export type CeremonyRecord = {
   transactionHash: string;
 };
 
+export type BlacklistEntry = {
+  timestamp: number;
+  reason: string;
+};
+
 export type Assets = { [key: string]: bigint };
 
 export type ClientMap = Map<WebSocketClient, string>; 
