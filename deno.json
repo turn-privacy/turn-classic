@@ -12,5 +12,13 @@
   "nodeModulesDir": "auto",
   "fmt": {
     "lineWidth": 300
+  },
+  "deploy": {
+    "project": "fd16d49d-acdb-4d34-ad46-f32d1af97a9f",
+    "exclude": [
+      "**/node_modules"
+    ],
+    "include": [],
+    "entrypoint": "api.ts"
   }
 }

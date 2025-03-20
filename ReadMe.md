@@ -176,18 +176,10 @@ $$
 
 ## Next steps
 
-- [X] Transaction simulation to model variable number of participants (with `.reduce`)
-- [X] design and implement server with Yaci
-
-### Server implementation
-
-- [X] remove clients from queue if they disconnect
-- [X] add database so mixer can recover if server restarts
-- [X] heartbeat
-- [ ] fix WebSocket client management (currently seeing ghost "Client disconnected" messages due to stale WebSocket connections not being properly cleaned up)
-- [ ] blacklist users who break the web connection while in an active ceremony
-- [ ] remove and blacklist users who don't sign after some amount of time
-- [ ] dotenv toggle to control whether or not the blacklist is checked
+- [x] remove and blacklist users who don't sign after some amount of time
+- [ ] in checkBadCeremonies ensure all transaction inputs are still unspent and blacklist any user who has spent an input
+- [ ] processCeremony handle tx failure... if because an input is invalid blacklist the user who spent an input
+- [ ] allow blacklisted users to unban themselves by paying a fee
 
 
 

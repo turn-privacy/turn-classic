@@ -35,6 +35,7 @@ export type CeremonyRecord = {
 export type BlacklistEntry = {
   timestamp: number;
   reason: string;
+  id: string; // will later allow us to offer the user a chance to remove a blacklist entry by paying a fee (id prevents replay attacks/using one payment to remove self multiple times)
 };
 
 export type Assets = { [key: string]: bigint };

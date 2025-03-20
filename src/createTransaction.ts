@@ -6,7 +6,7 @@ import { calculateUserChange } from "./services/lucid.ts";
 import { OPERATOR_FEE, UNIFORM_OUTPUT_VALUE } from "./config/constants.ts";
 import { TxBuilder } from "npm:@lucid-evolution/lucid";
 
-const two_hours = 2 * 60 * 60 * 1000;
+const hour = 60 * 60 * 1000;
 
 export const createTransaction = async (participants: Participant[]) => {
   const operatorUtxos = await lucid.utxosAt(operator.address);
@@ -27,8 +27,7 @@ export const createTransaction = async (participants: Participant[]) => {
         .pay.ToAddress(operator.address, {
           lovelace: OPERATOR_FEE * BigInt(participants.length),
         })
-        // .validTo(Date.now() + two_hours)
-        .validTo(Date.now() + 60 * 1000)
+        .validTo(Date.now() + hour)
     ),
   );
   const completeTx = await tx.complete();

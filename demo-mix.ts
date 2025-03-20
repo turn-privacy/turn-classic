@@ -65,7 +65,7 @@ const participants = await Promise.all(Array.from({ length: DEMO_ADDRESSES }, as
 {
   // // const valid_to = Date.now() + (15 * minute);
   // const valid_to = Date.now();
-  // const valid_to_slot = unixTimeToSlot("Preprod", valid_to);
+  // const valid_to_slot = unixTimeToSlot("Preview", valid_to);
   // console.log("valid_to:", valid_to);
   // console.log("valid_to_slot:", valid_to_slot);
   // // send one ada from the operator to the operator address

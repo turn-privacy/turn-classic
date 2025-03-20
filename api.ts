@@ -4,9 +4,9 @@ import { DenoKVTurnController } from "./src/controllers/DenoKVTurnController.ts"
 const ENVIRONMENT = Deno.env.get("ENVIRONMENT") || "development";
 const FRONTEND_DOMAIN = Deno.env.get("FRONTEND_DOMAIN");
 
-if (!FRONTEND_DOMAIN) {
-  throw new Error("FRONTEND_DOMAIN is not set");
-}
+// if (!FRONTEND_DOMAIN) {
+//   throw new Error("FRONTEND_DOMAIN is not set");
+// }
 
 const CLIENT_ORIGIN = ENVIRONMENT === "production"
   ? FRONTEND_DOMAIN // Replace with your actual frontend domain
@@ -57,6 +57,11 @@ async function handleListActiveCeremonies(): Promise<Response> {
   return new Response(JSON.stringify(ceremoniesWithoutRecipients), { status: 200 });
 }
 
+async function handleCeremonyHistory(): Promise<Response> {
+  const history = await turnController.getCeremonyHistory();
+  return new Response(JSON.stringify(history), { status: 200 });
+}
+
 async function handleQueue(): Promise<Response> {
   const queue = await turnController.getQueue();
   const queueWithoutRecipients = queue.map((participant: Participant) => ({ ...participant, recipient: "" }));
@@ -80,6 +85,8 @@ async function handleGet(req: Request): Promise<Response> {
   switch (pathname) {
     case "/list_active_ceremonies":
       return await handleListActiveCeremonies();
+    case "/ceremony_history":
+      return await handleCeremonyHistory();
     case "/queue":
       return await handleQueue();
     case "/ceremony_status":

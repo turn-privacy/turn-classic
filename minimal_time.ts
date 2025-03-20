@@ -25,7 +25,7 @@ lucid.selectWallet.fromSeed(operatorSeed);
 const operatorAddress = await lucid.wallet().address();
 
 const now = Date.now();
-const now_as_slot = unixTimeToSlot("Preprod", now);
+const now_as_slot = unixTimeToSlot("Preview", now);
 console.log(`Now: ${now}`)
 console.log(`Now as slot: ${now_as_slot}`)
 

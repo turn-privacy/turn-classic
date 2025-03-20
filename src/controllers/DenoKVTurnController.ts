@@ -6,9 +6,7 @@ import { BlacklistEntry, Ceremony, CeremonyRecord, Participant } from "../types/
 import { ITurnController } from "./ITurnController.ts";
 import { Buffer } from "npm:buffer";
 import * as CML from "npm:@anastasia-labs/cardano-multiplatform-lib-nodejs";
-// import * as CML from "npm:@anastasia-labs/cardano-multiplatform-lib-nodejs";
 
-// console.log(CML);
 const fromHexToText = (hex: string) => Buffer.from(hex, "hex").toString("utf-8");
 
 // const participantToPublicKey = (participant: Participant) : string => participant.signedMessage.key;
@@ -237,7 +235,7 @@ export class DenoKVTurnController implements ITurnController {
     return null;
   }
 
-  // todo: ensure this accesses kv in a thread-safe way
+  // todo: check all inputs are still unspent
   async checkBadCeremonies(): Promise<void> {
     // Start an atomic transaction
     const atomic = this.kv.atomic();
@@ -291,6 +289,7 @@ export class DenoKVTurnController implements ITurnController {
             atomic.set(["blacklist", cred], {
               timestamp: Date.now(),
               reason: "Failed to sign ceremony",
+              id: crypto.randomUUID(),
             });
           }
 
