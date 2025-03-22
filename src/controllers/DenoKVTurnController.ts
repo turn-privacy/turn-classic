@@ -18,6 +18,49 @@ export class DenoKVTurnController implements ITurnController {
     this.kv = kv;
   }
 
+  async handleResetDatabase(signedMessage: SignedMessage, message: string): Promise<null | string> {
+    const { address, context, timestamp, action } = JSON.parse(fromHexToText(message));
+    
+    if (context !== "By signing this message, you confirm that you are the admin and intend to reset the database. This action cannot be undone.") {
+      return "Invalid context";
+    }
+    
+    if (action !== "reset_database") {
+      return "Invalid action";
+    }
+    
+    if (Date.now() - timestamp > 10 * 60 * 1000) {
+      return "Message timestamp is too old";
+    }
+
+    const addressDetails = getAddressDetails(address);
+    const isValidSignature = verifyData(
+      addressDetails.address.hex,
+      addressDetails.paymentCredential!.hash,
+      message,
+      signedMessage,
+    );
+
+    if (!isValidSignature) {
+      return "Invalid signature";
+    }
+
+    // Start an atomic transaction
+    const atomic = this.kv.atomic();
+
+    // Delete all keys except ceremony history
+    const iter = this.kv.list({ prefix: [] });
+    for await (const entry of iter) {
+      const [prefix] = entry.key;
+      if (prefix !== "ceremony_history") {
+        atomic.delete(entry.key);
+      }
+    }
+
+    await atomic.commit();
+    return null;
+  }
+
   /*
   todo:
   - ensure sender has enough funds

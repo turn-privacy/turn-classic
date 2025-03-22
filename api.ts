@@ -1,8 +1,11 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
 import { Ceremony, Participant } from "./src/types/index.ts";
 import { DenoKVTurnController } from "./src/controllers/DenoKVTurnController.ts";
+
 const ENVIRONMENT = Deno.env.get("ENVIRONMENT") || "development";
 const FRONTEND_DOMAIN = Deno.env.get("FRONTEND_DOMAIN");
+
+const TEST_VALUE = Deno.env.get("TEST_VALUE") || "No test value set for TEST_VALUE";
 
 // if (!FRONTEND_DOMAIN) {
 //   throw new Error("FRONTEND_DOMAIN is not set");
@@ -11,6 +14,11 @@ const FRONTEND_DOMAIN = Deno.env.get("FRONTEND_DOMAIN");
 const CLIENT_ORIGIN = ENVIRONMENT === "production"
   ? FRONTEND_DOMAIN // Replace with your actual frontend domain
   : "http://localhost:3000";
+
+if (!CLIENT_ORIGIN) {
+  throw new Error("CLIENT_ORIGIN is not set");
+}
+
 const PORT = parseInt(Deno.env.get("SELF_PORT") || "8000");
 
 // Initialize KV store and controller
@@ -80,9 +88,20 @@ async function handleSubmitSignature(req: Request): Promise<Response> {
   return new Response(`Witness added to ceremony ${processed !== 0 ? `and processed transaction submitted` : ""}`, { status: 200 });
 }
 
+async function handleResetDatabase(req: Request): Promise<Response> {
+  const { signedMessage, message } = await req.json();
+  const failureReason = await turnController.handleResetDatabase(signedMessage, message);
+  if (failureReason) {
+    return new Response(failureReason, { status: 400 });
+  }
+  return new Response("Database reset successfully", { status: 200 });
+}
+
 async function handleGet(req: Request): Promise<Response> {
   const { pathname, searchParams } = new URL(req.url);
   switch (pathname) {
+    case "/test":
+      return new Response(TEST_VALUE, { status: 200 });
     case "/list_active_ceremonies":
       return await handleListActiveCeremonies();
     case "/ceremony_history":
@@ -103,6 +122,8 @@ async function handlePost(req: Request): Promise<Response> {
       return await handleSignup(req);
     case "/submit_signature":
       return await handleSubmitSignature(req);
+    case "/admin/reset":
+      return await handleResetDatabase(req);
     default:
       return new Response("Not Found", { status: 404 });
   }

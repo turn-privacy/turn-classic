@@ -11,4 +11,5 @@ export interface ITurnController {
   getQueue(): Promise<Participant[]>;
   getCeremonyHistory(): Promise<CeremonyRecord[]>;
   checkBadCeremonies(): Promise<void>;
+  handleResetDatabase(signedMessage: SignedMessage, message: string): Promise<null | string>;
 }
