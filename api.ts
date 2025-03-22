@@ -94,6 +94,7 @@ async function handleResetDatabase(req: Request): Promise<Response> {
   if (failureReason) {
     return new Response(failureReason, { status: 400 });
   }
+  console.log("database reset successfully");
   return new Response("Database reset successfully", { status: 200 });
 }
 
@@ -123,6 +124,7 @@ async function handlePost(req: Request): Promise<Response> {
     case "/submit_signature":
       return await handleSubmitSignature(req);
     case "/admin/reset":
+      console.log("inside /admin/reset");
       return await handleResetDatabase(req);
     default:
       return new Response("Not Found", { status: 404 });

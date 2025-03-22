@@ -45,6 +45,8 @@ export class DenoKVTurnController implements ITurnController {
       return "Invalid signature";
     }
 
+    console.log("Authentication successful");
+
     // Start an atomic transaction
     const atomic = this.kv.atomic();
 
