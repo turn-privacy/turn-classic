@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
 import { Ceremony, Participant } from "./src/types/index.ts";
 import { DenoKVTurnController } from "./src/controllers/DenoKVTurnController.ts";
+import { Either, isLeft } from "./src/Either.ts";
 
 const ENVIRONMENT = Deno.env.get("ENVIRONMENT") || "development";
 const FRONTEND_DOMAIN = Deno.env.get("FRONTEND_DOMAIN");
@@ -55,8 +56,12 @@ async function handleSignup(req: Request): Promise<Response> {
     return new Response(failureReason, { status: 400 });
   }
 
-  const ceremonyId = await turnController.tryCreateCeremony();
-  return new Response(`Participant added to queue ${ceremonyId !== "0" ? `and created ceremony ${ceremonyId}` : ""}`, { status: 200 });
+  const ceremonyId : Either<string, string> = await turnController.tryCreateCeremony();
+  if (isLeft(ceremonyId)) { // could not create ceremony
+    console.log(`Could not create ceremony: "${ceremonyId.value}"`);
+    return new Response(`Participant added to queue`, { status: 200 });
+  }
+  return new Response(`Participant added to queue and created ceremony ${ceremonyId.value}`, { status: 200 });
 }
 
 async function handleListActiveCeremonies(): Promise<Response> {

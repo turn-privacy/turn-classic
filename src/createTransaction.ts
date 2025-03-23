@@ -8,7 +8,8 @@ import { TxBuilder } from "npm:@lucid-evolution/lucid";
 
 const hour = 60 * 60 * 1000;
 
-export const createTransaction = async (participants: Participant[]) => {
+
+export const createTransaction = async (participants: Participant[]) : Promise<string> => {
   const operatorUtxos = await lucid.utxosAt(operator.address);
   const tx = await participants.reduce<Promise<TxBuilder>>(
     async (accTx: Promise<TxBuilder>, user: Participant): Promise<TxBuilder> => {
