@@ -15,4 +15,7 @@ export interface ITurnController {
   handleResetDatabase(signedMessage: SignedMessage, message: string): Promise<null | string>;
   getBlacklist(): Promise<BlacklistEntry[]>;
   getProtocolParameters(): ProtocolParameters;
+  // todo
+  // allow admin to remove blacklist entry
+  // allow admin to add blacklist entry
 }
