@@ -110,6 +110,11 @@ async function handleBlacklist(): Promise<Response> {
   return new Response(JSON.stringify(blacklist), { status: 200 });
 }
 
+async function handleProtocolParameters(): Promise<Response> {
+  const protocolParameters = await turnController.getProtocolParameters();
+  return new Response(JSON.stringify(protocolParameters), { status: 200 });
+}
+
 async function handleGet(req: Request): Promise<Response> {
   const { pathname, searchParams } = new URL(req.url);
   switch (pathname) {
@@ -125,6 +130,8 @@ async function handleGet(req: Request): Promise<Response> {
       return await handleCeremonyStatus(searchParams);
     case "/blacklist":
       return await handleBlacklist();
+    case "/protocol_parameters":
+      return await handleProtocolParameters();
     default:
       return new Response("Not Found", { status: 404 });
   }

@@ -41,3 +41,9 @@ export type BlacklistEntry = {
 export type Assets = { [key: string]: bigint };
 
 export type ClientMap = Map<WebSocketClient, string>; 
+
+export type ProtocolParameters = {
+  minParticipants: number;
+  operatorFee: string;  
+  uniformOutputValue: string;
+};

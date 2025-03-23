@@ -2,7 +2,7 @@ import { fromHex, getAddressDetails, paymentCredentialOf, SignedMessage, slotToU
 import { MIN_PARTICIPANTS, OPERATOR_FEE, SIGNUP_CONTEXT, UNIFORM_OUTPUT_VALUE } from "../config/constants.ts";
 import { createTransaction } from "../createTransaction.ts";
 import { getBalance, lucid } from "../services/lucid.ts";
-import { BlacklistEntry, Ceremony, CeremonyRecord, Participant } from "../types/index.ts";
+import { BlacklistEntry, Ceremony, CeremonyRecord, Participant, ProtocolParameters } from "../types/index.ts";
 import { ITurnController } from "./ITurnController.ts";
 import { Buffer } from "npm:buffer";
 import * as CML from "npm:@anastasia-labs/cardano-multiplatform-lib-nodejs";
@@ -410,5 +410,13 @@ export class DenoKVTurnController implements ITurnController {
       blacklist.push(entry.value);
     }
     return blacklist;
+  }
+
+  getProtocolParameters(): ProtocolParameters {
+    return {
+      minParticipants: MIN_PARTICIPANTS,
+      operatorFee: OPERATOR_FEE.toString(),
+      uniformOutputValue: UNIFORM_OUTPUT_VALUE.toString(),
+    } as ProtocolParameters;
   }
 }
