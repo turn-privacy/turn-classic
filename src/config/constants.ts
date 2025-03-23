@@ -1,5 +1,11 @@
 export const FAUCET_AMOUNT = 50n * 1_000_000n;
-export const UNIFORM_OUTPUT_VALUE = 5n * 1_000_000n;
+
+const uniformOutputValue = Number(Deno.env.get("UNIFORM_OUTPUT_VALUE"));
+if (isNaN(uniformOutputValue)) {
+  throw new Error("UNIFORM_OUTPUT_VALUE is not a number");
+}
+
+export const UNIFORM_OUTPUT_VALUE = BigInt(uniformOutputValue) * 1_000_000n;
 export const OPERATOR_FEE = 1n * 1_000_000n;
 // export const MIN_PARTICIPANTS : number = 2;
 const minParticipants = Number(Deno.env.get("MIN_PARTICIPANTS"));

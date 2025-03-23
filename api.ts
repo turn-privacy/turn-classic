@@ -66,6 +66,7 @@ async function handleListActiveCeremonies(): Promise<Response> {
 }
 
 async function handleCeremonyHistory(): Promise<Response> {
+  console.log("inside handleCeremonyHistory");
   const history = await turnController.getCeremonyHistory();
   return new Response(JSON.stringify(history), { status: 200 });
 }
@@ -89,6 +90,7 @@ async function handleSubmitSignature(req: Request): Promise<Response> {
 }
 
 async function handleResetDatabase(req: Request): Promise<Response> {
+  console.log("inside handleResetDatabase");
   const { signedMessage, message } = await req.json();
   const failureReason = await turnController.handleResetDatabase(signedMessage, message);
   if (failureReason) {
@@ -96,6 +98,11 @@ async function handleResetDatabase(req: Request): Promise<Response> {
   }
   console.log("database reset successfully");
   return new Response("Database reset successfully", { status: 200 });
+}
+
+async function handleBlacklist(): Promise<Response> {
+  const blacklist = await turnController.getBlacklist();
+  return new Response(JSON.stringify(blacklist), { status: 200 });
 }
 
 async function handleGet(req: Request): Promise<Response> {
@@ -111,6 +118,8 @@ async function handleGet(req: Request): Promise<Response> {
       return await handleQueue();
     case "/ceremony_status":
       return await handleCeremonyStatus(searchParams);
+    case "/blacklist":
+      return await handleBlacklist();
     default:
       return new Response("Not Found", { status: 404 });
   }

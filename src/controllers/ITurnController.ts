@@ -1,5 +1,5 @@
 import { SignedMessage } from "npm:@lucid-evolution/lucid";
-import { Ceremony, CeremonyRecord, Participant } from "../types/index.ts";
+import { Ceremony, CeremonyRecord, Participant, BlacklistEntry } from "../types/index.ts";
 
 export interface ITurnController {
   handleSignup(signedMessage: SignedMessage, payload: string): Promise<null | string>;
@@ -12,4 +12,5 @@ export interface ITurnController {
   getCeremonyHistory(): Promise<CeremonyRecord[]>;
   checkBadCeremonies(): Promise<void>;
   handleResetDatabase(signedMessage: SignedMessage, message: string): Promise<null | string>;
+  getBlacklist(): Promise<BlacklistEntry[]>;
 }

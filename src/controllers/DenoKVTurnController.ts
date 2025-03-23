@@ -32,8 +32,20 @@ export class DenoKVTurnController implements ITurnController {
     if (Date.now() - timestamp > 10 * 60 * 1000) {
       return "Message timestamp is too old";
     }
-
+    
     const addressDetails = getAddressDetails(address);
+    const adminCredential = Deno.env.get("ADMIN_CREDENTIAL");
+
+    if (adminCredential !== addressDetails.paymentCredential!.hash) {
+      console.log(`Invalid admin credential (expected ${adminCredential}, got ${addressDetails.paymentCredential!.hash})`);
+      return "Invalid admin credential";
+    }
+
+    if (!adminCredential) {
+      return "ADMIN_CREDENTIAL is not set";
+    }
+
+
     const isValidSignature = verifyData(
       addressDetails.address.hex,
       addressDetails.paymentCredential!.hash,
@@ -289,19 +301,20 @@ export class DenoKVTurnController implements ITurnController {
     const lastCheck = await this.kv.get<number | null>(["last_bad_ceremony_check_timestamp"]);
     
     // If we have a timestamp and it's less than 10 minutes old, return early
-    // if (lastCheck.value !== null && Date.now() - lastCheck.value < 10 * 60 * 1000) {
-    if (lastCheck.value !== null && Date.now() - lastCheck.value < 10 * 1000) {
+    if (lastCheck.value !== null && Date.now() - lastCheck.value < 10 * 60 * 1000) {
+    // if (lastCheck.value !== null && Date.now() - lastCheck.value < 10 * 1000) {
       return;
     }
 
     // Get all ceremonies
     const ceremonies = await this.getCeremonies();
+    
+    // Set the last check timestamp in the atomic transaction
+    atomic.set(["last_bad_ceremony_check_timestamp"], Date.now());
+    
     if (ceremonies.length === 0) {
       return;
     }
-
-    // Set the last check timestamp in the atomic transaction
-    atomic.set(["last_bad_ceremony_check_timestamp"], Date.now());
 
     const network = lucid.config().network;
     if (undefined === network) {
@@ -377,11 +390,22 @@ export class DenoKVTurnController implements ITurnController {
   }
 
   async getCeremonyHistory(): Promise<CeremonyRecord[]> {
+    console.log("inside DenoKVTurnController::getCeremonyHistory");
     const history: CeremonyRecord[] = [];
     const iter = this.kv.list<CeremonyRecord>({ prefix: ["ceremony_history"] });
     for await (const entry of iter) {
       history.push(entry.value);
     }
     return history;
+  }
+
+  // todo: test
+  async getBlacklist(): Promise<BlacklistEntry[]> {
+    const blacklist: BlacklistEntry[] = [];
+    const iter = this.kv.list<BlacklistEntry>({ prefix: ["blacklist"] });
+    for await (const entry of iter) {
+      blacklist.push(entry.value);
+    }
+    return blacklist;
   }
 }
