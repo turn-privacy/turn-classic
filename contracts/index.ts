@@ -59,6 +59,7 @@ const makeUser = async (): Promise<User> => {
 const admin = await makeUser();
 const user = await makeUser();
 const target = await makeUser(); // not allocated fund in the beginning
+const referenceScriptHolder = await makeUser();
 
 const emulator = new Emulator(
   [
@@ -100,6 +101,26 @@ const validator: SpendingValidator = {
 const validatorAddress = validatorToAddress("Preview", validator, userStakeCredential);
 console.log(`Validator address: ${validatorAddress}`);
 
+{ // deploy the reference script
+  const tx = await lucid.newTx()
+    .pay.ToAddressWithData(referenceScriptHolder.address, { kind: "inline", value: Data.to(new Constr(0, [])) }, { lovelace: 1_000_000n }, validator)
+    .complete();
+
+  const signed = await tx.sign.withWallet().complete();
+  const txHash = await signed.submit();
+  console.log("txHash: ", txHash);
+
+  console.log(`Emulator time: ${emulator.now()}`);
+  emulator.awaitBlock(1);
+  console.log(`Emulator time: ${emulator.now()}`);
+}
+
+const referenceScriptUtxos = await lucid.utxosAt(referenceScriptHolder.address);
+if (referenceScriptUtxos.length !== 1) {
+  throw new Error("Reference script utxos not found");
+}
+console.log(`Reference script utxos: ${referenceScriptUtxos.length}`);
+
 const ONE_HOUR = 3_600_000;
 
 const unlockTime = emulator.now() + ONE_HOUR;
@@ -138,7 +159,7 @@ const Action = {
 
   const tx = await lucid.newTx()
     .collectFrom([lockedUtxos[0]], Action.CoinJoin)
-    .attach.SpendingValidator(validator)
+    .readFrom(referenceScriptUtxos)
     .pay.ToAddress(target.address, { lovelace: 1_000_000n })
     .addSigner(admin.address)
     .addSigner(user.address)
@@ -175,10 +196,10 @@ const invertFailure = async (fn: () => Promise<void>) => {
 
 const tryWithoutValidFrom = async () => {
   const ttl = emulator.now() + ONE_HOUR;
-  
+
   const tx = await lucid.newTx()
     .collectFrom(lockedUtxos, Action.Reclaim)
-    .attach.SpendingValidator(validator)
+    .readFrom(referenceScriptUtxos)
     .pay.ToAddress(target.address, { lovelace: 1_000_000n })
     .addSigner(user.address)
     .validTo(ttl)
@@ -196,7 +217,7 @@ const tryWithoutAdmin = async () => { // try to spend WITHOUT admin permission
 
   const tx = await lucid.newTx()
     .collectFrom(lockedUtxos, Action.Reclaim)
-    .attach.SpendingValidator(validator)
+    .readFrom(referenceScriptUtxos)
     .pay.ToAddress(target.address, { lovelace: 1_000_000n })
     .addSigner(user.address)
     .validFrom(unlockTime + 1000)
@@ -213,6 +234,4 @@ await invertFailure(tryWithoutAdmin);
 console.log(`Emulator time: ${emulator.now()}`);
 emulator.awaitBlock(200);
 console.log(`Emulator time: ${emulator.now()}`);
-console.log(`Double check utxos at validator address: ${(await lucid.utxosAt(validatorAddress)).length}`);
-
 await tryWithoutAdmin();

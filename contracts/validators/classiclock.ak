@@ -46,7 +46,6 @@ validator classiclock(admin: VerificationKeyHash) {
       Reclaim -> and {
           valid_after(self.validity_range, unlock_conditions.unlock_time),
           list.has(self.extra_signatories, unlock_conditions.owner),
-          True,
         }
     }
   }
