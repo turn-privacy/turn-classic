@@ -15,17 +15,6 @@ or {
     }
 }
 
------
-
-and {
-    user has signed the transaction
-    or {
-        enough time has passed
-        admin has signed the transaction
-    }
-}
-
-
 --------
 
 To run:

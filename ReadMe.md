@@ -244,15 +244,6 @@ https://preview.cardanoscan.io/transaction/963b06e44c018b7c4dd7d1496b52bbeec8930
 
 https://preview.cardanoscan.io/transaction/878d8f20a0f940617d94efa99709d2267596c139eedd36402246a7e264531386
 
-### Digital Signatures
-
-Please expect product announcements to come with a signed message containing all critical details. This includes new websites, tokens, or products. Don't trust, VERIFY! My signatures can be easily checked with the following site: 
-
-https://verifycardanomessage.cardanofoundation.org/
-
-My public key is a5010102583901a8adfd9249633f7bf0178a199edf3bc4ef071b403904cfd5f273ed1d0727ba7e3685b335ef03dbcaf6a43ae5659d3ed88677ddfb3691d14c03272006215820c46dce4d20a26e223530f4a242f7755cfc6192cc539b4a6f3361ead76bd003c2
-
-
 ## Resources
 
 ### CoinJoin initial post
@@ -262,3 +253,10 @@ https://bitcointalk.org/index.php?topic=279249.0
 https://arxiv.org/abs/2310.04899
 
 
+## Digital Signatures
+
+Please expect product announcements to come with a signed message containing all critical details. This includes new websites, tokens, or products. Don't trust, VERIFY! My signatures can be easily checked with the following site: 
+
+https://verifycardanomessage.cardanofoundation.org/
+
+My public key is a5010102583901a8adfd9249633f7bf0178a199edf3bc4ef071b403904cfd5f273ed1d0727ba7e3685b335ef03dbcaf6a43ae5659d3ed88677ddfb3691d14c03272006215820c46dce4d20a26e223530f4a242f7755cfc6192cc539b4a6f3361ead76bd003c2
