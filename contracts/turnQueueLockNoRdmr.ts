@@ -4,46 +4,29 @@ testing the classiclock.ak validator
 
 Should allow spend if
 
-or {
-    and {
-        enough time has passed
-        user has signed the transaction
-    },
-    and {
-        admin has signed the transaction
-        user has signed the transaction
+and {
+    user has signed the transaction
+    or {
+      admin has signed the transaction
+      enough time has passed
     }
 }
 
 --------
 
+This version does not require a sepecific redeemer to tell it what conditions to check for. 
+
+--------
+
 To run:
 
-    deno run --allow-read --allow-env --allow-ffi index.ts
+    deno run --allow-read --allow-env --allow-ffi turnQueueLockNoRdmr.ts
 
 */
 
-import { applyParamsToScript, Constr, Data, Emulator, generateSeedPhrase, Lucid, paymentCredentialOf, SpendingValidator, stakeCredentialOf, validatorToAddress } from "npm:@lucid-evolution/lucid";
+import { applyParamsToScript, Constr, Data, Emulator, Lucid, paymentCredentialOf, SpendingValidator, stakeCredentialOf, validatorToAddress } from "npm:@lucid-evolution/lucid";
 import blueprint from "./plutus.json" with { type: "json" };
-
-async function init_get_wallet_address(): Promise<[string, string]> {
-  const emulator = new Emulator([]);
-  const offlineLucid = await Lucid(emulator, "Preview");
-  const seedPhrase = generateSeedPhrase();
-  offlineLucid.selectWallet.fromSeed(seedPhrase);
-  const address = await offlineLucid.wallet().address();
-  return [address, seedPhrase];
-}
-
-type User = {
-  address: string;
-  seed: string;
-};
-
-const makeUser = async (): Promise<User> => {
-  const [address, seed] = await init_get_wallet_address();
-  return { address, seed };
-};
+import { invertFailure, makeUser, ONE_HOUR } from "./common.ts";
 
 const admin = await makeUser();
 const user = await makeUser();
@@ -74,7 +57,7 @@ const adminPaymentCredential = paymentCredentialOf(admin.address).hash;
 const userPaymentCredential = paymentCredentialOf(user.address).hash;
 const userStakeCredential = stakeCredentialOf(user.address);
 
-const validatorCode = blueprint.validators.find((v) => v.title === "classiclock.classiclock.spend")?.compiledCode;
+const validatorCode = blueprint.validators.find((v) => v.title === "turn_queue_lock_no_rdmr.turn_queue_lock_no_rdmr.spend")?.compiledCode;
 if (!validatorCode) {
   throw new Error("Validator code not found");
 }
@@ -110,7 +93,6 @@ if (referenceScriptUtxos.length !== 1) {
 }
 console.log(`Reference script utxos: ${referenceScriptUtxos.length}`);
 
-const ONE_HOUR = 3_600_000;
 
 const unlockTime = emulator.now() + ONE_HOUR;
 
@@ -137,17 +119,14 @@ const unlockConditions = {
   console.log(`Emulator time: ${emulator.now()}`);
 }
 
-const Action = {
-  CoinJoin: Data.to(new Constr(0, [])),
-  Reclaim: Data.to(new Constr(1, [])),
-};
+const redeemer = Data.to(new Constr(0, []));
 
 { // spend funds from the validator address WITH admin permission
   const lockedUtxos = await lucid.utxosAt(validatorAddress);
   console.log(`locked utxos: ${lockedUtxos.length}`);
 
   const tx = await lucid.newTx()
-    .collectFrom([lockedUtxos[0]], Action.CoinJoin)
+    .collectFrom([lockedUtxos[0]], redeemer)
     .readFrom(referenceScriptUtxos)
     .pay.ToAddress(target.address, { lovelace: 1_000_000n })
     .addSigner(admin.address)
@@ -172,22 +151,12 @@ const Action = {
 const lockedUtxos = await lucid.utxosAt(validatorAddress);
 console.log(`locked utxos: ${lockedUtxos.length}`);
 
-// if function passed thows... don't throw, if it doesn't throw, throw
-const invertFailure = async (fn: () => Promise<void>) => {
-  try {
-    await fn();
-  } catch {
-    console.log("%cFunction threw which is expected and good", "color: yellow");
-    return;
-  }
-  throw new Error("Function should have thrown");
-};
 
 const tryWithoutValidFrom = async () => {
   const ttl = emulator.now() + ONE_HOUR;
 
   const tx = await lucid.newTx()
-    .collectFrom(lockedUtxos, Action.Reclaim)
+    .collectFrom(lockedUtxos, redeemer)
     .readFrom(referenceScriptUtxos)
     .pay.ToAddress(target.address, { lovelace: 1_000_000n })
     .addSigner(user.address)
@@ -205,7 +174,7 @@ const tryWithoutAdmin = async () => { // try to spend WITHOUT admin permission
   const ttl = emulator.now() + ONE_HOUR;
 
   const tx = await lucid.newTx()
-    .collectFrom(lockedUtxos, Action.Reclaim)
+    .collectFrom(lockedUtxos, redeemer)
     .readFrom(referenceScriptUtxos)
     .pay.ToAddress(target.address, { lovelace: 1_000_000n })
     .addSigner(user.address)

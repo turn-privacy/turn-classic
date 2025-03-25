@@ -12,17 +12,17 @@
   },
   "validators": [
     {
-      "title": "classiclock.classiclock.spend",
+      "title": "turn_queue_lock.turn_queue_lock.spend",
       "datum": {
         "title": "datum",
         "schema": {
-          "$ref": "#/definitions/classiclock~1UnlockConditions"
+          "$ref": "#/definitions/goldilocks~1unlockconditions~1UnlockConditions"
         }
       },
       "redeemer": {
         "title": "redeemer",
         "schema": {
-          "$ref": "#/definitions/classiclock~1Action"
+          "$ref": "#/definitions/turn_queue_lock~1Action"
         }
       },
       "parameters": [
@@ -37,7 +37,7 @@
       "hash": "3fed9575519c0d32a508f728bfe88b62385dff951f87cd5fe711f0a3"
     },
     {
-      "title": "classiclock.classiclock.else",
+      "title": "turn_queue_lock.turn_queue_lock.else",
       "redeemer": {
         "schema": {}
       },
@@ -51,9 +51,54 @@
       ],
       "compiledCode": "5901e0010100229800aba2aba1aba0aab9faab9eaab9dab9a9bae0024888888896600264653001300900198049805000cdc3a400530090024888966002600460126ea800e26466453001159800980098061baa0028cc004c040c034dd500148c044c048c048c048c048c048c048c048c04800644646600200200644b30010018a508acc004cdc79bae30140010038a51899801001180a800a01e40489112cc004c010c03cdd50054566002660026eb0c008c040dd50039bae3013301037540071330013758600460206ea801c036294100e45660026464646644b3001300d301437540051598009806980a1baa30183019003899b88001375a6030602a6ea800a266e24004dd6980c180a9baa002404d14a08098c058004dd6980b180b98099baa006330143015001330149800980518089baa30153016001a6103d87a8000a60103d8798000404097ae030113754602860226ea8004c04cc050c050c050c050c050c050c050c040dd5003c4cc004dd6180118081baa007375c602660206ea800e294100e201c45900b4c030dd5003cc04000d222598009802001456600260206ea802a0071640451598009804001456600260206ea802a0071640451640388070601c601e0026e1d2000300a3754007164020300900130043754013149a26cac80101",
       "hash": "3fed9575519c0d32a508f728bfe88b62385dff951f87cd5fe711f0a3"
+    },
+    {
+      "title": "turn_queue_lock_no_rdmr.turn_queue_lock_no_rdmr.spend",
+      "datum": {
+        "title": "datum",
+        "schema": {
+          "$ref": "#/definitions/goldilocks~1unlockconditions~1UnlockConditions"
+        }
+      },
+      "redeemer": {
+        "title": "_redeemer",
+        "schema": {
+          "$ref": "#/definitions/Data"
+        }
+      },
+      "parameters": [
+        {
+          "title": "admin",
+          "schema": {
+            "$ref": "#/definitions/aiken~1crypto~1VerificationKeyHash"
+          }
+        }
+      ],
+      "compiledCode": "590186010100229800aba2aba1aba0aab9faab9eaab9dab9a9bae0024888888896600264653001300900198049805000cdc3a400530090024888966002600460126ea800e2646644b30013370e900018061baa0018cc004c040c034dd5000c8c044c048c048c048c048c048c048c048c04800644646600200200644b30010018a508acc004cdc79bae30140010038a51899801001180a800a01e40489112cc004cc004dd6180118081baa007375c602660206ea800e2b3001330013758600460206ea801c036294626464646644b3001300d301437540051598009806980a1baa30183019003899b88001375a6030602a6ea800a266e24004dd6980c180a9baa002404d14a08098c058004dd6980b180b98099baa006330143015001330149800980518089baa30153016001a60103d87a8000a60103d8798000404097ae030113754602860226ea8004c04cc050c050c050c050c050c050c050c040dd5003a01c8a5040388b2016300e001300e300f001300a3754007164020300900130043754013149a26cac8011",
+      "hash": "8a5e69de93c572b584586364877a5c3757362fb55c938a182b4de025"
+    },
+    {
+      "title": "turn_queue_lock_no_rdmr.turn_queue_lock_no_rdmr.else",
+      "redeemer": {
+        "schema": {}
+      },
+      "parameters": [
+        {
+          "title": "admin",
+          "schema": {
+            "$ref": "#/definitions/aiken~1crypto~1VerificationKeyHash"
+          }
+        }
+      ],
+      "compiledCode": "590186010100229800aba2aba1aba0aab9faab9eaab9dab9a9bae0024888888896600264653001300900198049805000cdc3a400530090024888966002600460126ea800e2646644b30013370e900018061baa0018cc004c040c034dd5000c8c044c048c048c048c048c048c048c048c04800644646600200200644b30010018a508acc004cdc79bae30140010038a51899801001180a800a01e40489112cc004cc004dd6180118081baa007375c602660206ea800e2b3001330013758600460206ea801c036294626464646644b3001300d301437540051598009806980a1baa30183019003899b88001375a6030602a6ea800a266e24004dd6980c180a9baa002404d14a08098c058004dd6980b180b98099baa006330143015001330149800980518089baa30153016001a60103d87a8000a60103d8798000404097ae030113754602860226ea8004c04cc050c050c050c050c050c050c050c040dd5003a01c8a5040388b2016300e001300e300f001300a3754007164020300900130043754013149a26cac8011",
+      "hash": "8a5e69de93c572b584586364877a5c3757362fb55c938a182b4de025"
     }
   ],
   "definitions": {
+    "Data": {
+      "title": "Data",
+      "description": "Any Plutus data."
+    },
     "Int": {
       "dataType": "integer"
     },
@@ -61,24 +106,7 @@
       "title": "VerificationKeyHash",
       "dataType": "bytes"
     },
-    "classiclock/Action": {
-      "title": "Action",
-      "anyOf": [
-        {
-          "title": "CoinJoin",
-          "dataType": "constructor",
-          "index": 0,
-          "fields": []
-        },
-        {
-          "title": "Reclaim",
-          "dataType": "constructor",
-          "index": 1,
-          "fields": []
-        }
-      ]
-    },
-    "classiclock/UnlockConditions": {
+    "goldilocks/unlockconditions/UnlockConditions": {
       "title": "UnlockConditions",
       "anyOf": [
         {
@@ -95,6 +123,23 @@
               "$ref": "#/definitions/Int"
             }
           ]
+        }
+      ]
+    },
+    "turn_queue_lock/Action": {
+      "title": "Action",
+      "anyOf": [
+        {
+          "title": "CoinJoin",
+          "dataType": "constructor",
+          "index": 0,
+          "fields": []
+        },
+        {
+          "title": "Reclaim",
+          "dataType": "constructor",
+          "index": 1,
+          "fields": []
         }
       ]
     }
