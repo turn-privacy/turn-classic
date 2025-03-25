@@ -135,6 +135,12 @@ $$
 
 The operators balance after the transaction is equal to their initial balance minus the network fee plus the operator fee times the number of participants. 
 
+### New Operator Balance Math 
+
+It has occured to me that there is no reason to have the operator provide an input to the transaction. Instead the network fee can be taken out of the operators fee. 
+
+    Equations here if different. (not sure that they are)
+
 ### Participants Balance
 
 The balance before the transaction is equal to the balance after the transaction plus the operator fee plus the amount sent to the receiving address

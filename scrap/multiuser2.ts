@@ -92,7 +92,7 @@ const selectUserUtxos = async (userAddress: string) => {
   throw new Error(`Insufficient funds at ${userAddress}`);
 };
 
-const operatorUtxos = await lucid.utxosAt(operator.address);
+// const operatorUtxos = await lucid.utxosAt(operator.address);
 
 const mergeAssets = (a: Assets, b: Assets): Assets => {
   const assets = { ...a };
@@ -176,7 +176,8 @@ const tx = await [alice, bob, charlie].reduce<Promise<TxBuilder>>(
   Promise.resolve(
     lucid
       .newTx()
-      .collectFrom(operatorUtxos)
+      // .collectFrom(operatorUtxos)
+      .addSigner(operator.address)
       .pay.ToAddress(operator.address, { lovelace: operatorFee * 3n }) // operator fee
       .validTo(emulator.now() + (15 * minute))
   ),
