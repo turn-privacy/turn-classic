@@ -154,6 +154,9 @@ export const negateAssets = (assets: Assets): Assets => {
 
 export const calculateUserChange = (utxos: UTxO[]): Assets => { // what needs to be returned to the user as change?
   const b0: Assets = utxos.reduce((acc, utxo) => mergeAssets(acc, utxo.assets), {} as Assets); // balance (all assets owned) before tx
-  const b1 = mergeAssets(mergeAssets(b0, negateAssets({ lovelace: OPERATOR_FEE })), negateAssets({ lovelace: UNIFORM_OUTPUT_VALUE })); // balance after tx
+  const b1 = mergeAssets(
+    mergeAssets(b0, negateAssets({ lovelace: OPERATOR_FEE })), 
+    negateAssets({ lovelace: UNIFORM_OUTPUT_VALUE })
+  ); // balance after tx
   return b1;
 };
