@@ -4,23 +4,29 @@ import { DenoKVTurnController } from "./src/controllers/DenoKVTurnController.ts"
 import { Either, isLeft } from "./src/Either.ts";
 
 const ENVIRONMENT = Deno.env.get("ENVIRONMENT") || "development";
-const FRONTEND_DOMAIN = Deno.env.get("FRONTEND_DOMAIN");
+const FRONTEND_DOMAIN = Deno.env.get("FRONTEND_DOMAIN") || "http://localhost:3000";
+const BOT_SOURCE = Deno.env.get("BOT_SOURCE") || "http://localhost:3000";
 
 const TEST_VALUE = Deno.env.get("TEST_VALUE") || "No test value set for TEST_VALUE";
 
-// if (!FRONTEND_DOMAIN) {
-//   throw new Error("FRONTEND_DOMAIN is not set");
-// }
-
-const CLIENT_ORIGIN = ENVIRONMENT === "production"
-  ? FRONTEND_DOMAIN // Replace with your actual frontend domain
-  : "http://localhost:3000";
-
-if (!CLIENT_ORIGIN) {
-  throw new Error("CLIENT_ORIGIN is not set");
+if (!FRONTEND_DOMAIN) {
+  throw new Error("FRONTEND_DOMAIN is not set");
 }
 
-console.log(`CLIENT_ORIGIN: ${CLIENT_ORIGIN}`);
+if (!BOT_SOURCE) {
+  throw new Error("BOT_SOURCE is not set");
+}
+
+const ALLOWED_ORIGINS = [
+  FRONTEND_DOMAIN,
+  BOT_SOURCE
+].filter(Boolean); // Remove any undefined/null values
+
+if (ALLOWED_ORIGINS.length === 0) {
+  throw new Error("No allowed origins configured");
+}
+
+console.log(`Allowed origins: ${ALLOWED_ORIGINS.join(", ")}`);
 const PORT = parseInt(Deno.env.get("SELF_PORT") || "8000");
 
 // Initialize KV store and controller
@@ -154,12 +160,20 @@ async function handlePost(req: Request): Promise<Response> {
 }
 
 const handler = async (req: Request): Promise<Response> => {
+  const origin = req.headers.get("origin") || "";
+  const isAllowedOrigin = ALLOWED_ORIGINS.includes(origin);
+
+  console.log(`Allowed origins: ${ALLOWED_ORIGINS.join(", ")}`);
+
+  console.log(`origin: ${origin}`);
+  console.log(`isAllowedOrigin: ${isAllowedOrigin}`);
+
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 204,
       headers: {
-        "Access-Control-Allow-Origin": CLIENT_ORIGIN,
+        "Access-Control-Allow-Origin": isAllowedOrigin ? origin : ALLOWED_ORIGINS[0],
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type",
       },
@@ -167,8 +181,8 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   // Add CORS headers to all responses
-  const corsHeaders = {
-    "Access-Control-Allow-Origin": CLIENT_ORIGIN,
+  const corsHeaders: Record<string, string> = {
+    "Access-Control-Allow-Origin": isAllowedOrigin ? origin : ALLOWED_ORIGINS[0],
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
   };
