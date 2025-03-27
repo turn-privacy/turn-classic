@@ -38,7 +38,7 @@ async function handleCeremonyStatus(searchParams: URLSearchParams): Promise<Resp
   if (!ceremonyId) {
     return new Response("Missing ceremony id", { status: 400 });
   }
-  // Check if ceremony is in active ceremonies
+  // /caCheck if ceremony is in active ceremonies
   const activeCeremony = (await turnController.getCeremonies()).find((c) => c.id === ceremonyId);
   if (activeCeremony) {
     return new Response("pending", { status: 200 });
@@ -48,6 +48,12 @@ async function handleCeremonyStatus(searchParams: URLSearchParams): Promise<Resp
   const historyCeremony = (await turnController.getCeremonyHistory()).find((c) => c.id === ceremonyId);
   if (historyCeremony) {
     return new Response("on-chain", { status: 200 });
+  }
+
+  // check to see if the ceremony was cancelled
+  const cancelledCeremony = await turnController.checkIsCancelled(ceremonyId);
+  if (cancelledCeremony) {
+    return new Response(cancelledCeremony.reason, { status: 200 });
   }
 
   // Ceremony not found in either place

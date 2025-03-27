@@ -2,7 +2,7 @@ import { fromHex, getAddressDetails, paymentCredentialOf, SignedMessage, slotToU
 import { MIN_PARTICIPANTS, OPERATOR_FEE, SIGNUP_CONTEXT, UNIFORM_OUTPUT_VALUE } from "../config/constants.ts";
 import { createTransaction } from "../createTransaction.ts";
 import { getBalance, lucid } from "../services/lucid.ts";
-import { BlacklistEntry, Ceremony, CeremonyRecord, Participant, ProtocolParameters } from "../types/index.ts";
+import { BlacklistEntry, CancelledCeremony, Ceremony, CeremonyRecord, Participant, ProtocolParameters } from "../types/index.ts";
 import { ITurnController } from "./ITurnController.ts";
 import { Buffer } from "npm:buffer";
 import * as CML from "npm:@anastasia-labs/cardano-multiplatform-lib-nodejs";
@@ -202,7 +202,7 @@ export class DenoKVTurnController implements ITurnController {
     return right(ceremony.id);
   }
 
-  async cancelCeremony(id: string): Promise<void> {
+  async cancelCeremony(id: string, reason: string = "ceremony cancelled due to unknown reason"): Promise<void> {
     const ceremonyEntry = await this.kv.get<Ceremony>(["ceremonies", id]);
     if (!ceremonyEntry.value) return;
 
@@ -215,7 +215,22 @@ export class DenoKVTurnController implements ITurnController {
 
     // Remove ceremony
     atomic.delete(["ceremonies", id]);
+
+    // mark the ceremony as cancelled
+    atomic.set(["cancelled_ceremonies", id], {
+      reason,
+      timestamp: Date.now(),
+    });
+
     await atomic.commit();
+  }
+
+  async checkIsCancelled(id: string): Promise<null | CancelledCeremony> {
+    const cancelledCeremonyEntry = await this.kv.get<CancelledCeremony>(["cancelled_ceremonies", id]);
+    if (cancelledCeremonyEntry.value) {
+      return cancelledCeremonyEntry.value;
+    }
+    return null;
   }
 
   /*
@@ -233,11 +248,15 @@ export class DenoKVTurnController implements ITurnController {
       return 0;
     }
 
-    const assembled = lucid.fromTx(ceremony.transaction).assemble(ceremony.witnesses);
-    const ready = await assembled.complete();
-    const submitted = await ready.submit();
-    console.log("Transaction submitted:", submitted);
-
+    try {
+      const assembled = lucid.fromTx(ceremony.transaction).assemble(ceremony.witnesses);
+      const ready = await assembled.complete();
+      const submitted = await ready.submit();
+      console.log("Transaction submitted:", submitted);
+    } catch {
+      // cancel the ceremony
+      await this.cancelCeremony(id, "Ceremony cancelled due to transaction failure");
+    }
     // Add to history and remove from active ceremonies
     await this.kv.atomic()
       .set(["ceremony_history", ceremony.id], {
@@ -253,7 +272,7 @@ export class DenoKVTurnController implements ITurnController {
   async addWitness(id: string, witness: string): Promise<null | string> {
     const ceremonyEntry = await this.kv.get<Ceremony>(["ceremonies", id]);
     if (!ceremonyEntry.value) return null;
-    const ceremony = ceremonyEntry.value;
+    const ceremony: Ceremony = ceremonyEntry.value;
 
     { // ensure witness is correct
       const txWitness: CML.Vkeywitness | undefined = CML.TransactionWitnessSet.from_cbor_hex(witness).vkeywitnesses()?.get(0);
@@ -365,6 +384,10 @@ export class DenoKVTurnController implements ITurnController {
           atomic.set(["queue", Date.now(), participant.address], participant);
         }
         atomic.delete(["ceremonies", ceremony.id]);
+        atomic.set(["cancelled_ceremonies", ceremony.id], {
+          reason: "Ceremony cancelled because it expired before all participants signed",
+          timestamp: Date.now(),
+        });
       }
 
       // check all inputs are still unspent
