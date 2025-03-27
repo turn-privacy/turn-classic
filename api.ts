@@ -20,6 +20,7 @@ if (!CLIENT_ORIGIN) {
   throw new Error("CLIENT_ORIGIN is not set");
 }
 
+console.log(`CLIENT_ORIGIN: ${CLIENT_ORIGIN}`);
 const PORT = parseInt(Deno.env.get("SELF_PORT") || "8000");
 
 // Initialize KV store and controller
