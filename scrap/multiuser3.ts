@@ -6,6 +6,8 @@ import { Buffer } from "node:buffer";
 /*
     Simple simulation of a multi-user mixing ceremony.
     This version extends the previous version by using JavaScript's `.reduce` function to create the transaction.
+    This version extends the previous version by removing the operators role as an active participant in the ceremony.
+    The operator is now only a fee collector.
 */
 
 async function init_get_wallet_address(): Promise<[string, string]> {
@@ -52,7 +54,7 @@ const charlie = await makeUser("charlie");
 const sillycoin = createAsset("sillycoin");
 const dogcoin = createAsset("dogcoin");
 
-const people = [operator, alice, bob, charlie];
+const people = [alice, bob, charlie];
 
 const emulator = new Emulator(
   people.map((obj: User) => ({
@@ -67,7 +69,7 @@ const emulator = new Emulator(
 );
 
 const lucid = await Lucid(emulator, "Preview");
-lucid.selectWallet.fromSeed(operator.seed);
+// lucid.selectWallet.fromSeed(operator.seed);
 
 const outputSize = 5_000_000n; // how much ada does each user mix
 const operatorFee = 5_000_000n;
@@ -116,7 +118,7 @@ const negateAssets = (assets: Assets): Assets => {
   }
   return negated;
 };
-
+ 
 const calculateUserChange = (utxos: UTxO[]): Assets => { // what needs to be returned to the user as change?
   const b0: Assets = utxos.reduce((acc, utxo) => mergeAssets(acc, utxo.assets), {} as Assets); // balance (all assets owned) before tx
   const b1 = mergeAssets(mergeAssets(b0, negateAssets({ lovelace: operatorFee })), negateAssets({ lovelace: outputSize })); // balance after tx
@@ -173,6 +175,8 @@ const showOperatorUtxos = async () => {
 
 showOperatorUtxos();
 
+
+const networkFeeEstimate = 1_000_000n;
 /*
 who the hell is paying the network fee?
 
@@ -192,8 +196,10 @@ Figured it out.
 Lucid is selecting the operator's UTxOs as inputs simply because the operator is set as the current wallet.
 
 */
+console.log("About to select alice's wallet");
+lucid.selectWallet.fromAddress(alice.address, await selectUserUtxos(alice.address));
 const tx = await [alice, bob, charlie].reduce<Promise<TxBuilder>>(
-  async (accTx: Promise<TxBuilder>, user: User): Promise<TxBuilder> => {
+  async (accTx: Promise<TxBuilder>, user: User, index: number): Promise<TxBuilder> => {
     const utxos = await selectUserUtxos(user.address);
     const userChange = calculateUserChange(utxos);
     return (await accTx)
@@ -207,7 +213,7 @@ const tx = await [alice, bob, charlie].reduce<Promise<TxBuilder>>(
       .newTx()
       // .collectFrom(operatorUtxos)
       .addSigner(operator.address)
-      .pay.ToAddress(operator.address, { lovelace: operatorFee * 3n }) // operator fee
+      .pay.ToAddress(operator.address, { lovelace: (operatorFee * 3n) - networkFeeEstimate }) // operator fee
       .validTo(emulator.now() + (15 * minute)),
   ),
 );
