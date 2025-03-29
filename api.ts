@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
-import { Ceremony, Participant } from "./src/types/index.ts";
+import { CancelledCeremony, Ceremony, Participant } from "./src/types/index.ts";
 import { DenoKVTurnController } from "./src/controllers/DenoKVTurnController.ts";
 import { Either, isLeft } from "./src/Either.ts";
 
@@ -19,7 +19,7 @@ if (!BOT_SOURCE) {
 
 const ALLOWED_ORIGINS = [
   FRONTEND_DOMAIN,
-  BOT_SOURCE
+  BOT_SOURCE,
 ].filter(Boolean); // Remove any undefined/null values
 
 if (ALLOWED_ORIGINS.length === 0) {
@@ -69,7 +69,7 @@ async function handleSignup(req: Request): Promise<Response> {
     return new Response(failureReason, { status: 400 });
   }
 
-  const ceremonyId : Either<string, string> = await turnController.tryCreateCeremony();
+  const ceremonyId: Either<string, string> = await turnController.tryCreateCeremony();
   if (isLeft(ceremonyId)) { // could not create ceremony
     console.log(`Could not create ceremony: "${ceremonyId.value}"`);
     return new Response(`Participant added to queue`, { status: 200 });
@@ -81,6 +81,11 @@ async function handleListActiveCeremonies(): Promise<Response> {
   const ceremonies = await turnController.getCeremonies();
   const ceremoniesWithoutRecipients = ceremonies.map((ceremony: Ceremony) => ({ ...ceremony, participants: ceremony.participants.map((participant: Participant) => ({ ...participant, recipient: "" })) }));
   return new Response(JSON.stringify(ceremoniesWithoutRecipients), { status: 200 });
+}
+
+async function handleListCancelledCeremonies(): Promise<Response> {
+  const cancelledCeremonies: CancelledCeremony[] = await turnController.getCancelledCeremonies();
+  return new Response(JSON.stringify(cancelledCeremonies), { status: 200 });
 }
 
 async function handleCeremonyHistory(): Promise<Response> {
@@ -145,6 +150,8 @@ async function handleGet(req: Request): Promise<Response> {
       return await handleBlacklist();
     case "/protocol_parameters":
       return await handleProtocolParameters();
+    case "/list_cancelled_ceremonies":
+      return await handleListCancelledCeremonies();
     default:
       return new Response("Not Found", { status: 404 });
   }
@@ -217,8 +224,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     try {
       await turnController.checkBadCeremonies();
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Error checking for bad ceremonies:", error);
     }
 

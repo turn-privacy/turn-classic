@@ -16,6 +16,7 @@ export interface ITurnController {
   getBlacklist(): Promise<BlacklistEntry[]>;
   getProtocolParameters(): ProtocolParameters;
   checkIsCancelled(id: string): Promise<null | CancelledCeremony>;
+  getCancelledCeremonies(): Promise<CancelledCeremony[]>;
   // todo
   // allow admin to remove blacklist entry
   // allow admin to add blacklist entry

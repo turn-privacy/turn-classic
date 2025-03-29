@@ -442,4 +442,14 @@ export class DenoKVTurnController implements ITurnController {
       uniformOutputValue: UNIFORM_OUTPUT_VALUE.toString(),
     } as ProtocolParameters;
   }
+
+  async getCancelledCeremonies(): Promise<CancelledCeremony[]> {
+    const cancelledCeremonies: CancelledCeremony[] = [];
+    const iter = this.kv.list<CancelledCeremony>({ prefix: ["cancelled_ceremonies"] });
+    for await (const entry of iter) {
+      cancelledCeremonies.push(entry.value);
+    }
+    return cancelledCeremonies;
+  }
+  
 }
