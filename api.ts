@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
-import { CancelledCeremony, Ceremony, Participant } from "./src/types/index.ts";
+import {Ceremony, Participant } from "./src/types/index.ts";
+import { CancelledCeremony } from "./src/types/CancelledCeremony.ts";
 import { DenoKVTurnController } from "./src/controllers/DenoKVTurnController.ts";
 import { Either, isLeft } from "./src/Either.ts";
 

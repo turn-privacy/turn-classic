@@ -2,7 +2,8 @@ import { fromHex, getAddressDetails, paymentCredentialOf, SignedMessage, slotToU
 import { MIN_PARTICIPANTS, OPERATOR_FEE, SIGNUP_CONTEXT, UNIFORM_OUTPUT_VALUE } from "../config/constants.ts";
 import { createTransaction } from "../createTransaction.ts";
 import { getBalance, lucid } from "../services/lucid.ts";
-import { BlacklistEntry, CancelledCeremony, Ceremony, CeremonyRecord, Participant, ProtocolParameters } from "../types/index.ts";
+import { BlacklistEntry,Ceremony, CeremonyRecord, Participant, ProtocolParameters } from "../types/index.ts";
+import { cancelledCeremony, CancelledCeremony } from "../types/CancelledCeremony.ts";
 import { ITurnController } from "./ITurnController.ts";
 import { Buffer } from "npm:buffer";
 import * as CML from "npm:@anastasia-labs/cardano-multiplatform-lib-nodejs";
@@ -217,10 +218,7 @@ export class DenoKVTurnController implements ITurnController {
     atomic.delete(["ceremonies", id]);
 
     // mark the ceremony as cancelled
-    atomic.set(["cancelled_ceremonies", id], {
-      reason,
-      timestamp: Date.now(),
-    });
+    atomic.set(["cancelled_ceremonies", id], cancelledCeremony(reason, ceremonyEntry.value.transactionHash, id));
 
     await atomic.commit();
   }
@@ -384,10 +382,11 @@ export class DenoKVTurnController implements ITurnController {
           atomic.set(["queue", Date.now(), participant.address], participant);
         }
         atomic.delete(["ceremonies", ceremony.id]);
-        atomic.set(["cancelled_ceremonies", ceremony.id], {
-          reason: "Ceremony cancelled because it expired before all participants signed",
-          timestamp: Date.now(),
-        });
+        // atomic.set(["cancelled_ceremonies", ceremony.id], {
+        //   reason: "Ceremony cancelled because it expired before all participants signed",
+        //   timestamp: Date.now(),
+        // });
+        atomic.set(["cancelled_ceremonies", ceremony.id], cancelledCeremony("Ceremony cancelled because it expired before all participants signed", ceremony.transactionHash, ceremony.id));
       }
 
       // check all inputs are still unspent
@@ -451,5 +450,7 @@ export class DenoKVTurnController implements ITurnController {
     }
     return cancelledCeremonies;
   }
+
+  
   
 }

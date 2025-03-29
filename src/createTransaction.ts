@@ -6,7 +6,8 @@ import { calculateUserChange } from "./services/lucid.ts";
 import { OPERATOR_FEE, UNIFORM_OUTPUT_VALUE } from "./config/constants.ts";
 import { TxBuilder } from "npm:@lucid-evolution/lucid";
 
-const hour = 60 * 60 * 1000;
+// const hour = 60 * 60 * 1000;
+const tenMinutes = 10 * 1000;
 
 /*
 I feel like this shouldn't work!
@@ -39,7 +40,7 @@ export const createTransaction = async (participants: Participant[]) : Promise<s
         .pay.ToAddress(operator.address, {
           lovelace: OPERATOR_FEE * BigInt(participants.length),
         })
-        .validTo(Date.now() + hour)
+        .validTo(Date.now() + tenMinutes)
     ),
   );
   const completeTx = await tx.complete();
