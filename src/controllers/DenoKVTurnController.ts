@@ -2,12 +2,15 @@ import { fromHex, getAddressDetails, paymentCredentialOf, SignedMessage, slotToU
 import { MIN_PARTICIPANTS, OPERATOR_FEE, SIGNUP_CONTEXT, UNIFORM_OUTPUT_VALUE } from "../config/constants.ts";
 import { createTransaction } from "../createTransaction.ts";
 import { getBalance, lucid } from "../services/lucid.ts";
-import { BlacklistEntry,Ceremony, CeremonyRecord, Participant, ProtocolParameters } from "../types/index.ts";
+import { Ceremony, Participant, ProtocolParameters } from "../types/index.ts";
+import { BlacklistEntry, blacklistEntry } from "../types/BlackListEntry.ts";
+import { ceremonyRecord, CeremonyRecord } from "../types/CeremonyRecord.ts";
 import { cancelledCeremony, CancelledCeremony } from "../types/CancelledCeremony.ts";
 import { ITurnController } from "./ITurnController.ts";
 import { Buffer } from "npm:buffer";
 import * as CML from "npm:@anastasia-labs/cardano-multiplatform-lib-nodejs";
-import { Either, left, right } from "../Either.ts";
+import { Either, isLeft, left, right } from "../Either.ts";
+import { ceremony } from "../types/Ceremony.ts";
 
 const fromHexToText = (hex: string) => Buffer.from(hex, "hex").toString("utf-8");
 
@@ -165,28 +168,33 @@ export class DenoKVTurnController implements ITurnController {
       return left("Not enough participants in queue to make a ceremony");
     }
 
-    const ceremony: Ceremony = {
-      id: crypto.randomUUID(),
-      participants,
-      transaction: "",
-      witnesses: [],
-      transactionHash: "",
-    };
+    // const ceremony: Ceremony = {
+    //   id: crypto.randomUUID(),
+    //   participants,
+    //   transaction: "",
+    //   witnesses: [],
+    //   transactionHash: "",
+    // };
+    const newCeremony : Either<string, Ceremony> = await ceremony(participants);
+
+    if (isLeft(newCeremony)) {
+      return left(newCeremony.value);
+    }
 
     // Create transaction and add operator witness
-    try {
-      ceremony.transaction = await createTransaction(ceremony.participants);
-      ceremony.transactionHash = lucid.fromTx(ceremony.transaction).toHash();
-      ceremony.witnesses.push(await lucid.fromTx(ceremony.transaction).partialSign.withWallet());
-    } catch {
-      return left("Failed to create transaction");
-    }
+    // try {
+    //   newCeremony.transaction = await createTransaction(newCeremony.participants);
+    //   newCeremony.transactionHash = lucid.fromTx(newCeremony.transaction).toHash();
+    //   newCeremony.witnesses.push(await lucid.fromTx(newCeremony.transaction).partialSign.withWallet());
+    // } catch {
+    //   return left("Failed to create transaction");
+    // }
 
     // Store ceremony and remove participants from queue atomically
     const atomic = this.kv.atomic();
 
     // Add ceremony
-    atomic.set(["ceremonies", ceremony.id], ceremony);
+    atomic.set(["ceremonies", newCeremony.value.id], newCeremony.value);
 
     // Remove used participants from queue
     for (const participant of participants) {
@@ -200,7 +208,7 @@ export class DenoKVTurnController implements ITurnController {
     }
 
     await atomic.commit();
-    return right(ceremony.id);
+    return right(newCeremony.value.id);
   }
 
   async cancelCeremony(id: string, reason: string = "ceremony cancelled due to unknown reason"): Promise<void> {
@@ -257,10 +265,7 @@ export class DenoKVTurnController implements ITurnController {
     }
     // Add to history and remove from active ceremonies
     await this.kv.atomic()
-      .set(["ceremony_history", ceremony.id], {
-        id: ceremony.id,
-        transactionHash: ceremony.transactionHash,
-      })
+      .set(["ceremony_history", ceremony.id], ceremonyRecord(ceremony))
       .delete(["ceremonies", id])
       .commit();
 
@@ -364,11 +369,7 @@ export class DenoKVTurnController implements ITurnController {
 
         // add those who failed to sign to the blacklist
         for (const cred of thoseWhoFailedToSign) {
-          atomic.set(["blacklist", cred], {
-            timestamp: Date.now(),
-            reason: "Failed to sign ceremony",
-            id: crypto.randomUUID(),
-          });
+          atomic.set(["blacklist", cred], blacklistEntry("Failed to sign ceremony", cred));
         }
 
         // everyone else gets put back in the queue
@@ -421,7 +422,8 @@ export class DenoKVTurnController implements ITurnController {
     for await (const entry of iter) {
       history.push(entry.value);
     }
-    return history;
+    // order by expiration time if it exits, if it doesn't exit it goes to the end
+    return history.sort((a, b) => (b.expirationTime || 0) - (a.expirationTime || 0));
   }
 
   // todo: test

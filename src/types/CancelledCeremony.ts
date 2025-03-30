@@ -5,7 +5,6 @@ export type CancelledCeremony = {
   ceremonyId: string;
 };
 
-
 export const cancelledCeremony = (reason: string, transactionHash: string, ceremonyId: string): CancelledCeremony => ({
   reason,
   timestamp: Date.now(),

@@ -27,11 +27,6 @@ export type Ceremony = {
   transactionHash: string;
 };
 
-export type CeremonyRecord = {
-  id: string;
-  transactionHash: string;
-};
-
 export type BlacklistEntry = {
   timestamp: number;
   reason: string;

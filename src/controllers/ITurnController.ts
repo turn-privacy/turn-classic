@@ -1,7 +1,10 @@
 import { SignedMessage } from "npm:@lucid-evolution/lucid";
-import { Ceremony, CeremonyRecord, Participant, BlacklistEntry, ProtocolParameters,} from "../types/index.ts";
+import { Ceremony, Participant, ProtocolParameters,} from "../types/index.ts";
 import { CancelledCeremony } from "../types/CancelledCeremony.ts";
+import { CeremonyRecord } from "../types/CeremonyRecord.ts";
 import { Either } from "../Either.ts";
+import { BlacklistEntry } from "../types/BlackListEntry.ts";
+
 
 export interface ITurnController {
   handleSignup(signedMessage: SignedMessage, payload: string): Promise<null | string>;
