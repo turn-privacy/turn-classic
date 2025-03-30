@@ -1,10 +1,10 @@
 import { SignedMessage } from "npm:@lucid-evolution/lucid";
-import { Ceremony, Participant, ProtocolParameters,} from "../types/index.ts";
+import { Participant, ProtocolParameters,} from "../types/index.ts";
 import { CancelledCeremony } from "../types/CancelledCeremony.ts";
 import { CeremonyRecord } from "../types/CeremonyRecord.ts";
 import { Either } from "../Either.ts";
 import { BlacklistEntry } from "../types/BlackListEntry.ts";
-
+import { Ceremony } from "../types/Ceremony.ts";
 
 export interface ITurnController {
   handleSignup(signedMessage: SignedMessage, payload: string): Promise<null | string>;
@@ -21,6 +21,7 @@ export interface ITurnController {
   getProtocolParameters(): ProtocolParameters;
   checkIsCancelled(id: string): Promise<null | CancelledCeremony>;
   getCancelledCeremonies(): Promise<CancelledCeremony[]>;
+  removeBlacklistEntry(signedMessage: SignedMessage, payload: string): Promise<string>;
   // todo
   // allow admin to remove blacklist entry
   // allow admin to add blacklist entry

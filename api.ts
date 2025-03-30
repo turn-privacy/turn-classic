@@ -134,6 +134,14 @@ async function handleProtocolParameters(): Promise<Response> {
   return new Response(JSON.stringify(protocolParameters), { status: 200 });
 }
 
+async function handleRemoveBlacklistEntry(req: Request): Promise<Response> {
+  console.log("%cinside handleRemoveBlacklistEntry", "color: purple");
+  const { signedMessage, payload } = await req.json();
+  const result = await turnController.removeBlacklistEntry(signedMessage, payload);
+  console.log(`%cResult: ${result}`, "color: purple");
+  return new Response(result, { status: 200 });
+}
+
 async function handleGet(req: Request): Promise<Response> {
   const { pathname, searchParams } = new URL(req.url);
   switch (pathname) {
@@ -168,6 +176,8 @@ async function handlePost(req: Request): Promise<Response> {
     case "/admin/reset":
       console.log("inside /admin/reset");
       return await handleResetDatabase(req);
+    case "/admin/remove_blacklist_entry":
+      return await handleRemoveBlacklistEntry(req);
     default:
       return new Response("Not Found", { status: 404 });
   }

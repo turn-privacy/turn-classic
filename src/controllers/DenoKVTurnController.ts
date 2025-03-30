@@ -4,8 +4,8 @@ import { createTransaction } from "../createTransaction.ts";
 import { getBalance, lucid } from "../services/lucid.ts";
 import { Ceremony, Participant, ProtocolParameters } from "../types/index.ts";
 import { BlacklistEntry, blacklistEntry } from "../types/BlackListEntry.ts";
-import { ceremonyRecord, CeremonyRecord } from "../types/CeremonyRecord.ts";
-import { cancelledCeremony, CancelledCeremony } from "../types/CancelledCeremony.ts";
+import { CeremonyRecord, ceremonyRecord } from "../types/CeremonyRecord.ts";
+import { CancelledCeremony, cancelledCeremony } from "../types/CancelledCeremony.ts";
 import { ITurnController } from "./ITurnController.ts";
 import { Buffer } from "npm:buffer";
 import * as CML from "npm:@anastasia-labs/cardano-multiplatform-lib-nodejs";
@@ -34,6 +34,7 @@ export class DenoKVTurnController implements ITurnController {
       return "Invalid action";
     }
 
+    // todo: investigate if this is correct... think we need to convert the human readable timestamp to unix time
     if (Date.now() - timestamp > 10 * 60 * 1000) {
       return "Message timestamp is too old";
     }
@@ -84,6 +85,7 @@ export class DenoKVTurnController implements ITurnController {
     if (context !== SIGNUP_CONTEXT) {
       return "Invalid context";
     }
+    // todo: investigate if this is correct... think we need to convert the human readable timestamp to unix time
     if (Date.now() - signupTimestamp > 10 * 60 * 1000) {
       return "Signup timestamp is too old";
     }
@@ -106,7 +108,7 @@ export class DenoKVTurnController implements ITurnController {
     // not already in a ceremony
     const ceremonies = await this.getCeremonies();
     for (const ceremony of ceremonies) {
-      if (ceremony.participants.some((participant) => participant.address === address)) {
+      if (ceremony.participants.some((participant: Participant) => participant.address === address)) {
         return "Participant already in a ceremony";
       }
     }
@@ -175,7 +177,7 @@ export class DenoKVTurnController implements ITurnController {
     //   witnesses: [],
     //   transactionHash: "",
     // };
-    const newCeremony : Either<string, Ceremony> = await ceremony(participants);
+    const newCeremony: Either<string, Ceremony> = await ceremony(participants);
 
     if (isLeft(newCeremony)) {
       return left(newCeremony.value);
@@ -453,6 +455,49 @@ export class DenoKVTurnController implements ITurnController {
     return cancelledCeremonies;
   }
 
-  
-  
+  async removeBlacklistEntry(signedMessage: SignedMessage, payload: string): Promise<string> {
+    console.log("inside DenoKVTurnController::removeBlacklistEntry");
+    const { adminAddress, cred, context, signupTimestamp } = JSON.parse(fromHexToText(payload));
+
+    // 1. check if the context is correct
+    if (context !== "By signing this message, you confirm that you are the admin and intend to remove a blacklist entry.") {
+      return "Invalid context";
+    }
+    // 2. check if the timestamp is less than 10 minutes old
+    if (Date.now() - (new Date(signupTimestamp).getTime()) > 10 * 60 * 1000) {
+      return "Message timestamp is too old";
+    }
+
+    // 3. check if the admin credential is correct
+    const adminAddressDetails = getAddressDetails(adminAddress);
+    const adminCredential = Deno.env.get("ADMIN_CREDENTIAL");
+
+    if (adminCredential !== adminAddressDetails.paymentCredential!.hash) {
+      console.log(`Invalid admin credential (expected ${adminCredential}, got ${adminAddressDetails.paymentCredential!.hash})`);
+      return "Invalid admin credential";
+    }
+
+    // 4. check if the signature is valid
+    const isValidSignature = verifyData(
+      adminAddressDetails.address.hex,
+      adminAddressDetails.paymentCredential!.hash,
+      payload,
+      signedMessage,
+    );
+
+    if (!isValidSignature) {
+      return "Invalid signature";
+    }
+
+    // FINALLY, remove the blacklist entry
+    const iter = this.kv.list<BlacklistEntry>({ prefix: ["blacklist"] });
+
+    for await (const entry of iter) {
+      if (entry.value.cred === cred) {
+        this.kv.delete(entry.key);
+        return "Blacklist entry removed";
+      }
+    }
+    return "Blacklist entry not found";
+  }
 }
