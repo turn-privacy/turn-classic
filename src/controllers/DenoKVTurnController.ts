@@ -1,8 +1,7 @@
 import { fromHex, getAddressDetails, paymentCredentialOf, SignedMessage, slotToUnixTime, verifyData } from "npm:@lucid-evolution/lucid";
 import { MIN_PARTICIPANTS, OPERATOR_FEE, SIGNUP_CONTEXT, UNIFORM_OUTPUT_VALUE } from "../config/constants.ts";
-import { createTransaction } from "../createTransaction.ts";
 import { getBalance, lucid } from "../services/lucid.ts";
-import { Ceremony, Participant, ProtocolParameters } from "../types/index.ts";
+import { Participant, ProtocolParameters } from "../types/index.ts";
 import { BlacklistEntry, blacklistEntry } from "../types/BlackListEntry.ts";
 import { CeremonyRecord, ceremonyRecord } from "../types/CeremonyRecord.ts";
 import { CancelledCeremony, cancelledCeremony } from "../types/CancelledCeremony.ts";
@@ -10,11 +9,9 @@ import { ITurnController } from "./ITurnController.ts";
 import { Buffer } from "npm:buffer";
 import * as CML from "npm:@anastasia-labs/cardano-multiplatform-lib-nodejs";
 import { Either, isLeft, left, right } from "../Either.ts";
-import { ceremony } from "../types/Ceremony.ts";
+import { ceremony, Ceremony } from "../types/Ceremony.ts";
 
 const fromHexToText = (hex: string) => Buffer.from(hex, "hex").toString("utf-8");
-
-// const participantToPublicKey = (participant: Participant) : string => participant.signedMessage.key;
 
 export class DenoKVTurnController implements ITurnController {
   private kv: Deno.Kv;
@@ -35,7 +32,7 @@ export class DenoKVTurnController implements ITurnController {
     }
 
     // todo: investigate if this is correct... think we need to convert the human readable timestamp to unix time
-    if (Date.now() - timestamp > 10 * 60 * 1000) {
+    if (Date.now() - (new Date(timestamp).getTime()) > 10 * 60 * 1000) {
       return "Message timestamp is too old";
     }
 
@@ -85,8 +82,7 @@ export class DenoKVTurnController implements ITurnController {
     if (context !== SIGNUP_CONTEXT) {
       return "Invalid context";
     }
-    // todo: investigate if this is correct... think we need to convert the human readable timestamp to unix time
-    if (Date.now() - signupTimestamp > 10 * 60 * 1000) {
+    if (Date.now() - (new Date(signupTimestamp).getTime()) > 10 * 60 * 1000) {
       return "Signup timestamp is too old";
     }
 
@@ -170,27 +166,11 @@ export class DenoKVTurnController implements ITurnController {
       return left("Not enough participants in queue to make a ceremony");
     }
 
-    // const ceremony: Ceremony = {
-    //   id: crypto.randomUUID(),
-    //   participants,
-    //   transaction: "",
-    //   witnesses: [],
-    //   transactionHash: "",
-    // };
     const newCeremony: Either<string, Ceremony> = await ceremony(participants);
 
     if (isLeft(newCeremony)) {
       return left(newCeremony.value);
     }
-
-    // Create transaction and add operator witness
-    // try {
-    //   newCeremony.transaction = await createTransaction(newCeremony.participants);
-    //   newCeremony.transactionHash = lucid.fromTx(newCeremony.transaction).toHash();
-    //   newCeremony.witnesses.push(await lucid.fromTx(newCeremony.transaction).partialSign.withWallet());
-    // } catch {
-    //   return left("Failed to create transaction");
-    // }
 
     // Store ceremony and remove participants from queue atomically
     const atomic = this.kv.atomic();
@@ -428,7 +408,6 @@ export class DenoKVTurnController implements ITurnController {
     return history.sort((a, b) => (b.expirationTime || 0) - (a.expirationTime || 0));
   }
 
-  // todo: test
   async getBlacklist(): Promise<BlacklistEntry[]> {
     const blacklist: BlacklistEntry[] = [];
     const iter = this.kv.list<BlacklistEntry>({ prefix: ["blacklist"] });

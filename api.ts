@@ -1,9 +1,9 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
-import {Ceremony, Participant } from "./src/types/index.ts";
+import {Participant } from "./src/types/index.ts";
 import { CancelledCeremony } from "./src/types/CancelledCeremony.ts";
 import { DenoKVTurnController } from "./src/controllers/DenoKVTurnController.ts";
 import { Either, isLeft } from "./src/Either.ts";
-
+import { Ceremony } from "./src/types/Ceremony.ts";
 const ENVIRONMENT = Deno.env.get("ENVIRONMENT") || "development";
 const FRONTEND_DOMAIN = Deno.env.get("FRONTEND_DOMAIN") || "http://localhost:3000";
 const BOT_SOURCE = Deno.env.get("BOT_SOURCE") || "http://localhost:3000";
