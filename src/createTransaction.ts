@@ -21,7 +21,7 @@ Who is providing the network fee?
 */
 
 export const createTransaction = async (participants: Participant[]) : Promise<string> => {
-  // const operatorUtxos = await lucid.utxosAt(operator.address);
+  const operatorUtxos = await lucid.utxosAt(operator.address);
   const tx = await participants.reduce<Promise<TxBuilder>>(
     async (accTx: Promise<TxBuilder>, user: Participant): Promise<TxBuilder> => {
       const utxos = await selectUserUtxos(user.address);
@@ -35,7 +35,7 @@ export const createTransaction = async (participants: Participant[]) : Promise<s
     Promise.resolve(
       lucid
         .newTx()
-        // .collectFrom(operatorUtxos)
+        .collectFrom(operatorUtxos)
         .addSigner(operator.address)
         .pay.ToAddress(operator.address, {
           lovelace: OPERATOR_FEE * BigInt(participants.length),
