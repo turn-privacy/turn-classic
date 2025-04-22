@@ -7,7 +7,7 @@ import { OPERATOR_FEE, UNIFORM_OUTPUT_VALUE } from "./config/constants.ts";
 import { TxBuilder } from "npm:@lucid-evolution/lucid";
 
 // const hour = 60 * 60 * 1000;
-const tenMinutes = 10 * 1000;
+const tenMinutes = 10 * 60 * 1000; // 10 minutes
 
 /*
 I feel like this shouldn't work!
@@ -21,7 +21,7 @@ Who is providing the network fee?
 */
 
 export const createTransaction = async (participants: Participant[]) : Promise<string> => {
-  const operatorUtxos = await lucid.utxosAt(operator.address);
+  //const operatorUtxos = await lucid.utxosAt(operator.address);
   const tx = await participants.reduce<Promise<TxBuilder>>(
     async (accTx: Promise<TxBuilder>, user: Participant): Promise<TxBuilder> => {
       const utxos = await selectUserUtxos(user.address);
@@ -35,7 +35,7 @@ export const createTransaction = async (participants: Participant[]) : Promise<s
     Promise.resolve(
       lucid
         .newTx()
-        .collectFrom(operatorUtxos)
+        //.collectFrom(operatorUtxos)
         .addSigner(operator.address)
         .pay.ToAddress(operator.address, {
           lovelace: OPERATOR_FEE * BigInt(participants.length),
